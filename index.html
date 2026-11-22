@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's Coming to Hell's Kitchen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
+<script src="data.js"></script>
+<style>
+/* judyhuynh.ca brand (newsprint paper, riso pink + riso blue, Bricolage Grotesque) */
+:root{--f1:20px;--f2:16px;--f3:14px;--f4:12px;--w1:800;--w2:600;--ink:#201E1A;--ink2:#5E594F;--line:#DCD7C8;--paper:#F5F2E8;--bg:#E9E5D8;--focus:#2B5FC9;--accent:#FF3E96;--blue:#2B5FC9}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font:var(--f4)/1.45 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+#map{position:fixed;inset:0}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.panel{position:fixed;z-index:2;background:var(--paper);border-radius:14px;box-shadow:0 2px 6px rgba(40,30,20,.12),0 12px 32px rgba(40,30,20,.16);overflow:auto}
+#panel{left:16px;top:16px;width:360px;max-height:calc(100% - 32px);display:flex;flex-direction:column}
+header{padding:18px 20px 12px}
+h1{font-size:var(--f1);line-height:1.05;font-weight:var(--w1);letter-spacing:-.02em;margin:0 0 6px}
+.asof{color:var(--ink2);margin:0}
+/* lens switch: a preset of which layers are on */
+.lens{display:grid;grid-template-columns:repeat(3,auto);gap:4px;margin:0 16px 8px;padding:4px;background:var(--bg);border-radius:12px}
+.lens button{font:inherit;font-weight:var(--w2);border:0;background:none;color:var(--ink2);padding:8px 6px;border-radius:9px;cursor:pointer;min-height:44px;line-height:1.15}
+.lens button[aria-pressed=true]{background:var(--accent);color:var(--ink)}
+#layers{list-style:none;margin:0;padding:4px 12px 8px}
+#layers>li{padding:8px 0 6px;border-top:1px solid var(--line)}
+#layers>li:first-child{border-top:0}
+.lay{display:grid;grid-template-columns:1fr auto auto;align-items:center;column-gap:10px;width:100%;min-height:44px;padding:6px 8px;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:8px}
+.lay .nm{font-weight:var(--w1);font-size:var(--f3)}
+.lay .n,.sub .n{color:var(--ink2);font-variant-numeric:tabular-nums}
+.sw{width:40px;height:24px;border-radius:12px;background:#8a8278;position:relative;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.lay[aria-pressed=true] .sw{background:var(--ink)}
+.lay[aria-pressed=true] .sw::after{transform:translateX(16px)}
+.lay:hover,.sub:hover{background:var(--bg)}
+.subs{list-style:none;margin:0;padding:0}
+/* fixed symbol column so text never slides under it */
+.sub{display:grid;grid-template-columns:28px 1fr auto 22px;align-items:center;column-gap:10px;width:100%;min-height:38px;padding:4px 8px;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:8px}
+.sub .sym{width:28px;height:28px}
+.tick{width:22px;height:22px;border-radius:50%;border:2px solid var(--ink2);display:grid;place-items:center}
+.sub[aria-pressed=true] .tick{background:var(--ink);border-color:var(--ink)}
+.sub[aria-pressed=true] .tick::after{content:"";width:9px;height:5px;border:solid #fff;border-width:0 0 2.5px 2.5px;transform:translateY(-1px) rotate(-45deg)}
+.sub[aria-pressed=false] .sym,.off .sym{opacity:.3;filter:grayscale(1)}
+.sub[aria-pressed=false] .nm,.off .sub .nm{color:var(--ink2)}
+footer{margin-top:auto;padding:12px 20px 18px;color:var(--ink2);border-top:1px solid var(--line)}
+footer summary{cursor:pointer;color:var(--ink);font-weight:var(--w2)}
+#card{right:16px;top:16px;width:380px;max-height:calc(100% - 140px);padding:16px 20px 20px;display:none}
+#card.on{display:block}
+#card .k{font-weight:var(--w2);margin:0 0 4px;display:flex;align-items:center;gap:8px}
+#card .k img{width:24px;height:24px}
+#card h2{font-size:var(--f2);font-weight:var(--w1);line-height:1.25;margin:0 0 2px}
+#card .nm{margin:0 0 8px;font-weight:var(--w2)}
+#card .st{display:inline-block;margin:6px 0 10px;padding:4px 10px;border-radius:6px;background:var(--bg)}
+#card .why{background:#fbeeee;border-left:4px solid #b3122e;padding:10px 12px;margin:8px 0 12px}
+#card .why p{margin:0 0 6px}
+#card ol{list-style:none;padding:0;margin:8px 0 0}
+#card li{border-top:1px solid var(--line);padding:10px 0}
+#card li .t{font-weight:var(--w2)}
+#card li .m{color:var(--ink2)}
+#card li .x{margin-top:4px;overflow-wrap:anywhere}
+a{color:var(--blue)}
+.x0{float:right;font:inherit;font-size:var(--f1);line-height:1;border:0;background:none;cursor:pointer;color:var(--ink2);padding:6px 10px;border-radius:8px}
+.x0:hover{background:var(--bg)}
+.about{font:inherit;font-weight:var(--w2);color:#fff;background:var(--ink);border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+dialog#bld{width:min(640px,100vw - 32px);max-height:min(86vh,900px);padding:0;border:0;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);color:var(--ink);background:var(--paper)}
+dialog#bld::backdrop{background:rgba(34,31,26,.45)}
+#bld .x0{position:sticky;top:0;margin:8px}
+#bld .body{padding:20px 24px 24px;overflow:auto;max-height:inherit}
+#bld h2{font-size:var(--f2);font-weight:var(--w1);margin:0 0 12px}
+#bld h3{font-size:var(--f3);font-weight:var(--w1);margin:20px 0 6px}
+#bld .hint{color:var(--ink2);margin:0 0 8px}
+#bld .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin:0}
+#bld .facts dt,#bld .legend dt{color:var(--ink2)}
+#bld .facts dd{margin:0;font-weight:var(--w2)}
+#bld .rows{list-style:none;padding:0;margin:0}
+#bld .rows li{display:flex;flex-direction:column;border-top:1px solid var(--line);padding:10px 0}
+#bld .more summary{cursor:pointer;font-weight:var(--w2);padding:10px 0;min-height:44px;border-top:1px solid var(--line)}
+#bld .rows .x{color:var(--ink2);margin-top:2px;overflow-wrap:anywhere}
+#bld .chip{font-style:normal;background:var(--bg);border-radius:4px;padding:1px 6px}
+#bld .legend{margin:0 0 8px}#bld .legend summary{cursor:pointer}
+#bld .legend dl{margin:6px 0 0}#bld .legend div{margin:0 0 6px}#bld .legend dd{margin:0}
+#bld .src{color:var(--ink2);margin-top:20px;border-top:1px solid var(--line);padding-top:12px}
+.mapboxgl-popup-content{font:var(--f4)/1.35 "Bricolage Grotesque",system-ui,sans-serif;padding:8px 12px;color:var(--ink)}
+.tipd{color:var(--ink2)}
+.mapboxgl-ctrl-attrib{font-size:var(--f4)}
+@media (max-width:760px){
+ dialog#bld{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0}#bld .facts{grid-template-columns:1fr}
+ #panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:50vh;border-radius:16px 16px 0 0}
+ #card{left:0;right:0;top:auto;bottom:0;width:auto;max-height:62vh;border-radius:16px 16px 0 0;z-index:3}
+ header{padding:14px 16px 8px} h1{font-size:var(--f2)}
+ .lens{margin:0 12px 6px}
+ .mapboxgl-ctrl-bottom-right,.mapboxgl-ctrl-bottom-left{bottom:50vh}
+}
+.op{margin:12px 0 4px;padding:14px 16px;background:var(--bg);border-radius:6px}
+.op h3{font-size:var(--f3);font-weight:var(--w1);letter-spacing:-.01em;margin:0 0 4px}
+.op .note,.op .sub2{color:var(--ink2);margin:2px 0 0}
+.ans{display:inline-flex;gap:4px;align-items:baseline;font-weight:var(--w2);background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+.ans.ok span{color:#1F6B33}.ans.no span{color:#A3122B}.ans.chk span{color:#2B5FC9}
+.how{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.how summary{cursor:pointer;font-weight:var(--w2)}
+.how p{margin:8px 0 0}
+.types{display:grid;gap:6px;margin:10px 0 2px}
+.types button{font:inherit;font-weight:var(--w2);text-align:left;min-height:44px;padding:8px 12px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:6px;cursor:pointer}
+.types button:hover{background:#fff}
+.types button[aria-pressed=true]{background:var(--accent);border-color:var(--ink)}
+#card.wide{width:440px}
+#card .back{font:inherit;font-weight:var(--w2);border:0;background:var(--bg);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer;min-height:40px}
+#card .addr{color:var(--ink2);margin:12px 0 0}
+#card.wide h2{font-size:var(--f2);font-weight:var(--w1);letter-spacing:-.01em;margin:0 0 4px}
+#card.wide .types{grid-template-columns:repeat(3,1fr)}
+#card.wide .types button:nth-child(n+4){grid-column:span 1}
+#card.wide .types button{text-align:center;padding:6px 6px;line-height:1.2}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 6px}
+.tiles div{background:var(--bg);border-radius:6px;padding:10px;display:flex;flex-direction:column}
+.tiles b{font-size:var(--f2);font-weight:var(--w1);line-height:1.15}
+.tiles span{color:var(--ink2);line-height:1.25;margin-top:2px}
+.steps{list-style:none;margin:12px 0 0;padding:0}
+#card .steps>li{display:grid;grid-template-columns:30px 1fr;gap:12px;border-top:0;padding:10px 0;position:relative}
+.steps>li:not(:last-child)::before{content:"";position:absolute;left:14px;top:40px;bottom:-6px;width:2px;background:var(--line)}
+.steps .num{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-weight:var(--w1)}
+.steps h4{font-size:var(--f3);font-weight:var(--w1);margin:3px 0 6px}
+.steps p{margin:4px 0 0}
+.steps .big{font-size:var(--f3);font-weight:var(--w1)}
+.steps .note{color:var(--ink2)}
+.flag{margin:6px 0 0;padding:6px 10px;border-radius:6px;background:var(--bg);border-left:4px solid var(--accent)}
+.zl{list-style:none;margin:6px 0 0;padding:0}
+.zl li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:3px 0}
+@media (max-width:760px){#card.wide{width:auto;max-height:75vh}}
+.base{border-top:1px solid var(--line);margin:0 12px;padding:12px 8px 10px}
+.base h2{font-size:var(--f3);font-weight:var(--w1);margin:0 0 8px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;background:var(--bg);border-radius:10px}
+.seg button{font:inherit;font-weight:var(--w2);border:0;background:none;color:var(--ink2);min-height:44px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+#basekey{margin-top:10px}
+#basekey ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+#basekey li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center}
+#basekey .sw2{width:22px;height:16px;border-radius:3px;border:1px solid rgba(32,30,26,.35)}
+#basekey .n{color:var(--ink2);font-variant-numeric:tabular-nums}
+#basekey .hint{color:var(--ink2);margin:8px 0 0}
+.lotfacts{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:10px 0}
+.lotfacts dt{color:var(--ink2)}.lotfacts dd{margin:0;font-weight:var(--w2)}
+.lay .when{display:block;font-size:var(--f4);font-weight:400;color:var(--ink2)}
+.sub{min-height:44px}
+.x0{min-width:44px;min-height:44px}
+.about{min-height:44px}
+summary{min-height:44px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.mapboxgl-ctrl-group button{width:44px;height:44px}
+.lens button{min-width:44px}
+.find{margin:0 16px 8px;position:relative}
+.find input{width:100%;font:inherit;min-height:44px;padding:8px 12px;border:2px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.find input:focus{border-color:var(--focus);outline:none}
+.find ul{list-style:none;margin:4px 0 0;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff;max-height:300px;overflow:auto}
+.find li button{display:block;width:100%;text-align:left;font:inherit;min-height:44px;padding:8px 12px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
+.find li:first-child button{border-top:0}
+.find li button:hover,.find li button:focus{background:var(--bg)}
+.find small{display:block;color:var(--ink2);font-size:var(--f4)}
+.hl{margin:0 0 8px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#card h2:focus,#bld h2:focus{outline:none}
+</style>
+</head>
+<body>
+<div id="map" role="region" aria-label="Map of Hell's Kitchen"></div>
+<aside id="panel" class="panel">
+ <header>
+  <h1>What's Coming to Hell's Kitchen</h1>
+  <p class="asof" id="asof"></p>
+ </header>
+ <div class="lens" role="group" aria-label="Show">
+  <button data-v="store" aria-pressed="true">Storefronts</button>
+  <button data-v="built" aria-pressed="false">Buildings and Zoning</button>
+  <button data-v="all" aria-pressed="false">All</button>
+ </div>
+ <div class="find" role="search">
+  <label for="q" class="vh">Find an address or business</label>
+  <input id="q" type="search" placeholder="Find an address or business" autocomplete="off" aria-controls="qres">
+  <ul id="qres" hidden></ul>
+ </div>
+ <ul id="layers" aria-label="Map layers"></ul>
+ <section class="base" aria-labelledby="base-h">
+  <h2 id="base-h">Background</h2>
+  <div class="seg" role="group" aria-label="Background map">
+   <button data-b="off" aria-pressed="true">Off</button><button data-b="lu" aria-pressed="false">Land Use</button><button data-b="zn" aria-pressed="false">Zoning</button>
+  </div>
+  <div id="basekey"></div>
+ </section>
+ <footer>
+  <details><summary>Sources and Limits</summary>
+   <p>City and state open data, clipped to the city's Hell's Kitchen neighborhood boundary (NTA MN0402). Buildings Dept. permit filings since July 2024; new buildings and demolitions since 2021 (both the DOB NOW and older BIS systems); State Liquor Authority pending applications; health inspection records; City Planning zoning applications; Board of Standards and Appeals cases; storefront registry (31 Dec 2025). Background: City Planning's zoning districts, commercial overlays, special districts and tax lot land use (MapPLUTO).</p>
+   <p>"Likely new tenant" is read from the permit's own description and can be wrong. Denial reasons are summarized from each Board decision letter. Liquor license and Buildings Dept. objection reasons are not public.</p>
+  </details>
+ </footer>
+</aside>
+<section id="card" class="panel" aria-label="Details"></section>
+<dialog id="bld" aria-labelledby="bld-h"><button class="x0" aria-label="Close" onclick="this.closest('dialog').close()">×</button><div class="body"></div></dialog>
+<script>
+const D=window.HK, F=D.features;
+// colour per sub-type, circles everywhere; denied keeps an X. Palettes validated for colour-blind separation per view.
+// All view falls back to one colour per layer so ~14 types never share a screen.
+const LAYERS=[
+ {id:"coming",name:"Coming Soon",hex:"#FF3E96",subs:{new:"Likely New Tenant",sign:"Sign Permit",liquor:"Liquor License",food_new:"Restaurant Not Yet Inspected",reno:"Renovation"}},
+ {id:"opened",name:"Just Opened",hex:"#1F7A3A",subs:{food_open:"Restaurant Opened",done_new:"Build-Out Finished",done_sign:"Sign Installed",done_reno:"Renovation Finished"}},
+ {id:"vacant",name:"Vacant Storefronts",hex:"#8C877D",subs:{vacant_coming:"Permit Filed",vacant:"No Permit"}},
+ {id:"build",name:"New Buildings and Demolitions",hex:"#2B5FC9",subs:{nb:"New Building",demo:"Demolition"}},
+ {id:"zoning",name:"Zoning Proposals",hex:"#00A0B0",subs:{active:"In Progress",done:"Approved Since 2019"}},
+ {id:"denied",name:"Denied or Stopped",hex:"#B3122E",subs:{bsa:"Denied",bsa_w:"Withdrawn or Dismissed",zap:"Zoning Application Stopped"}}
+];
+const VIEWS={store:["coming","opened","vacant"],built:["build","zoning","denied"],all:["coming","opened","vacant","build","zoning","denied"]};
+let view="store";
+const C=Object.fromEntries(LAYERS.map(l=>[l.id,l.hex]));
+const SYM={
+ "coming:new":{shape:"circle",fill:"#FF3E96",size:24,z:80},
+ "coming:sign":{shape:"circle",fill:"#F2A000",size:19,z:60},
+ "coming:liquor":{shape:"circle",fill:"#6E3FA3",size:19,z:60},
+ "coming:food_new":{shape:"circle",fill:"#00A0B0",size:19,z:60},
+ "opened:food_open":{shape:"circle",fill:"#1F7A3A",size:17,z:55},
+ "opened:done_new":{shape:"circle",fill:"#1F7A3A",size:21,z:56},
+ "opened:done_sign":{shape:"circle",fill:"#1F7A3A",size:15,z:54},
+ "opened:done_reno":{shape:"circle",fill:"#9DBFA6",size:12,z:11},
+ "coming:reno":{shape:"circle",fill:"#B9B3A6",size:12,z:10},
+ "vacant:vacant_coming":{shape:"circle",fill:"#8C877D",ring:"#FF3E96",size:17,z:30},
+ "vacant:vacant":{shape:"circle",fill:"#8C877D",size:13,z:20},
+ "build:nb":{shape:"circle",fill:"#2B5FC9",size:21,z:70},
+ "build:demo":{shape:"circle",fill:"#E07B00",size:19,z:65},
+ "zoning:active":{shape:"circle",fill:"#00A0B0",size:22,z:75},
+ "zoning:done":{shape:"circle",fill:"#9C6ADE",size:19,z:72},
+ "denied:bsa":{shape:"x",fill:"#B3122E",size:23,z:90},
+ "denied:bsa_w":{shape:"x",fill:"#B3122E",size:19,z:88},
+ "denied:zap":{shape:"x",fill:"#B3122E",size:19,z:88}
+};
+// All view: same sizes, layer colour
+Object.keys(SYM).forEach(k=>{const [l]=k.split(":");SYM[k+":all"]={...SYM[k],fill:C[l],ring:SYM[k].ring?"#201E1A":undefined}});
+const symFor=k=>view==="all"?k+":all":k;
+const on={}, subOn={};
+LAYERS.forEach(l=>{Object.keys(l.subs).forEach(k=>subOn[l.id+":"+k]=k!=="reno"&&k!=="done_reno")});
+function setView(v){view=v;LAYERS.forEach(l=>on[l.id]=VIEWS[v].includes(l.id))}
+setView("store");
+const who=e=>`<li><b>${esc(e.n)}</b><span>${esc(e.what)}</span><span class="x">${esc(e.when)} · ${esc(e.src)}</span></li>`;
+const fmt=d=>{if(!d)return"";if(/^\d{4}$/.test(d))return d;const t=new Date(d+"T12:00:00");return t.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})};
+document.getElementById("asof").textContent="Data as of "+fmt(D.meta.asof);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// ---------- symbols, drawn once and shared by map and legend ----------
+const PR=2;
+function poly(g,c,r,n,rot){g.beginPath();for(let i=0;i<n;i++){const a=rot+i*2*Math.PI/n;g[i?"lineTo":"moveTo"](c+r*Math.cos(a),c+r*Math.sin(a))}g.closePath()}
+function drawSym(s){
+ const S=s.size, cv=document.createElement("canvas"); cv.width=cv.height=S*PR;
+ const g=cv.getContext("2d"); g.scale(PR,PR); const c=S/2, r=S/2-2;
+ g.lineJoin="round";g.lineCap="round";
+ const path=()=>{
+  if(s.shape==="circle"||s.shape==="nogo"){g.beginPath();g.arc(c,c,r,0,Math.PI*2)}
+  else if(s.shape==="square"){const a=r*.86;g.beginPath();g.rect(c-a,c-a,a*2,a*2)}
+  else if(s.shape==="diamond")poly(g,c,r,4,-Math.PI/2);
+  else if(s.shape==="hex")poly(g,c,r,6,0);
+  else if(s.shape==="triup"){g.beginPath();g.moveTo(c,c-r);g.lineTo(c+r*.95,c+r*.75);g.lineTo(c-r*.95,c+r*.75);g.closePath()}
+  else if(s.shape==="tridown"){g.beginPath();g.moveTo(c,c+r);g.lineTo(c+r*.95,c-r*.75);g.lineTo(c-r*.95,c-r*.75);g.closePath()}
+  else if(s.shape==="star"){g.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.48:r;g[i?"lineTo":"moveTo"](c+rr*Math.cos(a),c+rr*Math.sin(a)+r*.06)}g.closePath()}
+  else if(s.shape==="plus"){const a=r*.36,b=r*.95;g.beginPath();g.moveTo(c-a,c-b);g.lineTo(c+a,c-b);g.lineTo(c+a,c-a);g.lineTo(c+b,c-a);g.lineTo(c+b,c+a);g.lineTo(c+a,c+a);g.lineTo(c+a,c+b);g.lineTo(c-a,c+b);g.lineTo(c-a,c+a);g.lineTo(c-b,c+a);g.lineTo(c-b,c-a);g.lineTo(c-a,c-a);g.closePath()}
+ };
+ if(s.shape==="x"){const a=r*.62;g.beginPath();g.moveTo(c-a,c-a);g.lineTo(c+a,c+a);g.moveTo(c+a,c-a);g.lineTo(c-a,c+a);g.strokeStyle="#fff";g.lineWidth=r*.62+3;g.stroke();g.strokeStyle=s.fill;g.lineWidth=r*.62;g.stroke();return cv}
+ path();g.strokeStyle="#fff";g.lineWidth=3.5;g.stroke();
+ if(s.fill2){g.save();path();g.clip();g.fillStyle=s.fill;g.fillRect(0,0,c,S);g.fillStyle=s.fill2;g.fillRect(c,0,c,S);g.restore()}
+ else{g.fillStyle=s.fill;path();g.fill()}
+ g.strokeStyle=s.ring||"rgba(32,30,26,.75)";g.lineWidth=s.ring?3:1.2;path();g.stroke();
+ if(s.core){g.fillStyle="#fff";g.beginPath();g.arc(c,c,r*.38,0,Math.PI*2);g.fill()}
+ if(s.shape==="nogo"){g.fillStyle="#fff";g.fillRect(c-r*.6,c-r*.17,r*1.2,r*.34)}
+ return cv;
+}
+const CV={}, URL_={};
+Object.entries(SYM).forEach(([k,s])=>{CV[k]=drawSym(s);URL_[k]=CV[k].toDataURL()});
+CV.sel=document.createElement("canvas");CV.sel.width=CV.sel.height=80;
+{const g=CV.sel.getContext("2d");g.lineWidth=7;g.strokeStyle="#fff";g.beginPath();g.arc(40,40,32,0,7);g.stroke();g.lineWidth=4;g.strokeStyle="#201E1A";g.stroke()}
+
+// ---------- fan out markers that share a lot ----------
+const groups={};
+F.forEach(f=>{const k=f.geometry.coordinates.map(v=>v.toFixed(5)).join(",");(groups[k]=groups[k]||[]).push(f)});
+Object.values(groups).forEach(g=>{
+ const vis=g.filter(f=>f.properties.kind!=="reno"), n=vis.length;
+ g.forEach(f=>{const p=f.properties;p.sym=p.layer+":"+p.kind;p.z=SYM[p.sym].z;p.off=[0,0]});
+ if(n>1)vis.forEach((f,i)=>{const a=-Math.PI/2+i*2*Math.PI/n, d=n===2?8:11;f.properties.off=[+(Math.cos(a)*d).toFixed(1),+(Math.sin(a)*d).toFixed(1)]});
+ g.forEach(f=>{const o=f.properties.off;f.properties.toff=[+(o[0]/16+.9).toFixed(2),+(o[1]/16).toFixed(2)]});
+});
+
+// ---------- legend ----------
+function count(l,k){return F.filter(f=>f.properties.layer===l&&(!k||f.properties.kind===k)).reduce((a,f)=>a+(l==="vacant"?(f.properties.n||1):1),0)}
+const yr4=d=>(d||"").slice(0,4);
+function span(l){const ds=F.filter(f=>f.properties.layer===l&&f.properties.date&&/^\d{4}/.test(f.properties.date)).map(f=>f.properties.date).sort();if(!ds.length)return"";const a=yr4(ds[0]),b=yr4(ds[ds.length-1]);return a===b?a:`${a} to ${b}`}
+const WHEN={coming:()=>`Filed ${span("coming")}, not open yet`,opened:()=>`Finished or first inspected ${span("opened")}`,vacant:()=>"Storefronts reported vacant on Dec 31, 2025",build:()=>`Filed ${span("build")}`,zoning:()=>`Filed ${span("zoning")}`,denied:()=>`Decided ${span("denied")}`};
+function drawLayers(){
+ document.querySelectorAll(".lens button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===view));
+ document.getElementById("layers").innerHTML=LAYERS.filter(l=>VIEWS[view].includes(l.id)).map(l=>{
+  const shown=Object.keys(l.subs).filter(k=>subOn[l.id+':'+k]).reduce((a,k)=>a+count(l.id,k),0);
+  return `<li class="${on[l.id]?"":"off"}">
+  <button class="lay" data-l="${l.id}" aria-pressed="${on[l.id]}"><span class="nm">${l.name}<span class="when">${WHEN[l.id]()}</span></span><span class="n">${shown}</span><span class="sw" aria-hidden="true"></span></button>
+  <ul class="subs">${Object.entries(l.subs).filter(([k])=>count(l.id,k)).map(([k,n])=>`<li><button class="sub" data-s="${l.id}:${k}" aria-pressed="${subOn[l.id+':'+k]}"><img class="sym" src="${URL_[symFor(l.id+':'+k)]}" alt=""><span class="nm">${n}</span><span class="n">${count(l.id,k)}</span><span class="tick" aria-hidden="true"></span></button></li>`).join("")}</ul></li>`}).join("");
+ document.querySelectorAll(".lay").forEach(b=>b.onclick=()=>{on[b.dataset.l]=!on[b.dataset.l];redraw(b)});
+ document.querySelectorAll(".sub").forEach(b=>b.onclick=()=>{subOn[b.dataset.s]=!subOn[b.dataset.s];const l=b.dataset.s.split(":")[0];if(subOn[b.dataset.s])on[l]=true;redraw(b)});
+}
+document.querySelectorAll(".lens button").forEach(b=>b.onclick=()=>{setView(b.dataset.v);redraw(b)});
+function setIcons(){if(map.getLayer&&map.getLayer("pts")){const e=view==="all"?["concat",["get","sym"],":all"]:["get","sym"];map.setLayoutProperty("pts","icon-image",e);map.setLayoutProperty("sel","icon-image","sel")}}
+function redraw(btn){setIcons();const sel=btn&&(btn.dataset.l?`[data-l="${btn.dataset.l}"]`:btn.dataset.s?`[data-s="${btn.dataset.s}"]`:`[data-v="${btn.dataset.v}"]`);drawLayers();filter();if(sel)document.querySelector(sel).focus()}
+
+function bisLink(bbl){if(!bbl||bbl.length<10)return"";return`https://a810-bisweb.nyc.gov/bisweb/PropertyProfileOverviewServlet?boro=${bbl[0]}&block=${+bbl.slice(1,6)}&lot=${+bbl.slice(6,10)}`}
+const SRC={dob:"Buildings Dept. filing",sla:"State Liquor Authority",dohmh:"Health Dept. record",zap:"City Planning",bsa:"Board of Standards and Appeals",sf:"Storefront registry"};
+const safeUrl=u=>/^https?:\/\//i.test(u||"")?u:"";
+let lastFocus=null;
+function openCard(el){if(!el.classList.contains("on"))lastFocus=document.activeElement;el.classList.add("on");el.scrollTop=0;const h=el.querySelector("h2");if(h){h.tabIndex=-1;h.focus({preventScroll:true})}}
+function closeCard(el){el.classList.remove("on","wide");if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});if(lastFocus&&document.contains(lastFocus))lastFocus.focus()}
+function card(f){
+ const p=f.properties, el=document.getElementById("card"); el.classList.remove("wide");
+ const links=[];
+ if(safeUrl(p.url))links.push(`<a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener">${p.layer==="denied"&&p.kind==="bsa"?"Read the decision letter":"Open the city record"}</a>`);
+ if(p.bbl)links.push(`<button class="about" data-bbl="${esc(p.bbl)}">About This Building</button>`);
+ el.innerHTML=`<button class="x0" aria-label="Close">×</button>
+  <p class="k"><img src="${URL_[p.sym]}" alt="">${esc(p.label)}</p>
+  ${p.layer==="opened"&&p.name?`<h2>${esc(p.name)}</h2><p class="nm">${esc(p.address)}</p>`:`<h2>${esc(p.address)}</h2>${p.name?`<p class="nm">${esc(p.name)}</p>`:""}`}
+  <span class="st">${esc(p.status)}${p.date?" · "+fmt(p.date):""}</span>
+  ${p.stories?`<p>${esc(p.stories)} stories${p.units&&+p.units?" · "+esc(p.units)+" homes":""}</p>`:""}
+  ${p.reason||p.asked?`<div class="why">${p.asked?`<p><b>Asked for:</b> ${esc(p.asked)}</p>`:""}${p.reason?`<p><b>Why:</b> ${esc(p.reason)}</p>`:""}</div>`:""}
+  ${links.length?`<p>${links.join(" · ")}</p>`:""}
+  ${p.layer==="vacant"?`<section id="op" class="op" aria-label="Thinking of Opening Here?"><p>Loading...</p></section>`:""}
+  <ol>${p.items.map(i=>`<li><div class="t">${esc(i.t)}</div><div class="m">${esc(SRC[i.src])}${i.d?" · "+fmt(i.d):""}${i.s?" · "+esc(i.s):""}${i.src==="dob"&&i.id?` · Filing ${esc(i.id)}`:""}</div>${i.x?`<div class="x">${esc(i.x)}</div>`:""}</li>`).join("")}</ol>`;
+ openCard(el);
+ if(p.layer==="vacant")fillOpening(f);
+ el.querySelectorAll(".about").forEach(btn=>btn.onclick=()=>openBuilding(btn.dataset.bbl,p.address));
+ el.querySelector(".x0").onclick=()=>closeCard(el);
+}
+
+// ---------- Thinking of Opening Here? (shared helpers) ----------
+let OPEN=null;
+const openP=fetch("opening.json").then(r=>r.json()).then(j=>{Object.values(j).forEach(o=>{if(o.rent&&!Number.isInteger(o.rent.rate))o.rent.rate=o.rent.rate.toFixed(2)});OPEN=j}).catch(()=>OPEN={});
+async function getBld(){try{BLD=BLD||await (await fetch("buildings.json")).json()}catch(e){BLD=BLD||{}}return BLD}
+const num=n=>Number(n).toLocaleString("en-US");
+const ZW={Likely:"Likely",Unlikely:"Unlikely",Check:"Check with the city",No:"No"};
+function ans(v){const c={Likely:"ok",Unlikely:"no",No:"no"}[v]||"chk", i={ok:"✓",no:"✕",chk:"?"}[c];return `<span class="ans ${c}"><span aria-hidden="true">${i}</span> ${v?ZW[v]:"Not found for this lot"}</span>`}
+// storefront history from buildings.json: years vacant in a row, what was there before
+function hist(o){
+ const s=o&&o.years; if(!s||!s.length)return null;
+ let i=0; while(i<s.length&&s[i].vac)i++;
+ const prev=s[i];
+ return {from:i?+s[i-1].y:null,to:+s[0].y,before:prev&&prev.occ.length?prev.occ.join(", "):null,beforeY:prev?+prev.y:null};
+}
+function histLine(h){
+ if(!h)return"No storefront history on record.";
+ const v=h.from?(h.from===h.to?`Reported vacant in ${h.to}.`:`Reported vacant every December from ${h.from} to ${h.to}.`):"";
+ const b=h.before?` Before that, in ${h.beforeY}: ${esc(h.before.toLowerCase())}.`:"";
+ return v+b;
+}
+function probLine(b){if(!b)return"";return b.probTotal?`${b.probTotal} open violation${b.probTotal>1?"s":""}${b.fines?`, ${money(b.fines)} in fines owed`:""}.`:"No open violations on record."}
+const METHOD=`<details class="how"><summary>How We Estimate This</summary>
+ <p><b>Rent.</b> The median monthly rent per square foot that landlords reported to the city for storefronts in this census tract (2024), times the tract's median storefront size. It is a rough price tag for a typical space nearby, not this unit. Ask the landlord for the real size and rent.</p>
+ <p><b>Commercial Rent Tax.</b> Applies in Manhattan below 96th Street when yearly rent is $250,000 or more. We flag it when our estimate passes that line.</p>
+ <p><b>Zoning.</b> A rough read of the zoning district and any commercial overlay. On blocks zoned for homes, City of Yes (2024) lets empty ground-floor storefronts in residential buildings reopen with local shops, restaurants and offices (Zoning Resolution 52-61). City of Yes (2024) reorganized the use rules, so confirm with the Buildings Dept. or a zoning professional before signing. Not legal advice.</p>
+ <p><b>Competition.</b> Food and drink places, and coffee and tea places, within 250 m (about 3 blocks) in health inspection records, leaving out places with no inspection in the last 18 months.</p>
+ <p><b>Subway.</b> Nearest station and average daily riders in October 2026. Walk time is the straight-line distance plus 30%, at about 80 m a minute.</p>
+ <p><b>Alcohol.</b> Active on-site licenses within 500 feet from the State Liquor Authority, including beer and wine. The state takes a closer look at a new full liquor license when 3 or more are within 500 feet.</p>
+</details>`;
+// D2: pick a business type, answers tailored to it
+const TYPES={food:"Food and Drink",retail:"Retail Shop",service:"Service",community:"Community or Health Space",other:"Something Else"};
+const TITLE={food:"Opening a Food or Drink Place",retail:"Opening a Retail Shop",service:"Opening a Service Business",community:"Opening a Community or Health Space",other:"Opening a Business Here"};
+const SPECIAL={CL:"Special Clinton District",HY:"Special Hudson Yards District",MiD:"Special Midtown District",HRW:"Special Hudson River Park District"};
+let curType=null;
+function typeButtons(sel){return `<div class="types" role="group" aria-label="What kind of space?">${Object.entries(TYPES).map(([k,n])=>`<button data-t="${k}" aria-pressed="${k===sel}">${n}</button>`).join("")}</div>`}
+async function fillOpening(f){
+ const el=document.getElementById("op"); if(!el)return;
+ await openP; const o=OPEN[f.properties.id];
+ el.innerHTML=`<p class="hl">${histLine(hist(o))}</p><h3>Thinking of Opening Here?</h3><p class="sub2">What kind of space?</p>${typeButtons(null)}`;
+ el.querySelectorAll(".types button").forEach(b=>b.onclick=()=>stepView(f,b.dataset.t).then(()=>document.querySelector("#card h2").focus()));
+}
+async function stepView(f,t){
+ curType=t; const p=f.properties, el=document.getElementById("card");
+ await openP; const B=p.bbl?(await getBld())[p.bbl]:null; const o=OPEN[p.id]; if(!o)return;
+ const r=o.rent,z=o.zoning,c=o.coffee,s=o.subway, h=hist(o);
+ const zv=t==="community"?z.community:z.coffee; // shops, food and services share the commercial-use read
+ const zd=(z.district||"").split(" / ");
+ const zone=z.district?`${esc(zPlain(zd[0],zd[1],z.special))}.`:"";
+ const step={
+  zoning:`<h4>Can It Open Here?</h4>${t==="other"?`<ul class="zl"><li><span>Shop, Restaurant or Service</span>${ans(z.coffee)}</li><li><span>Community or Health Space</span>${ans(z.community)}</li></ul>`:`<p>${ans(zv)}</p>`}<p class="note">${zone}${z.reopen&&t!=="community"?" The block is zoned for homes, but since 2024 (City of Yes) an empty ground-floor storefront in a residential building can reopen as a local shop, restaurant or office.":""} Confirm with the Buildings Dept. before signing.</p>`,
+  rent:`<h4>What Might Rent Cost?</h4><p class="big">About ${money(r.est)} a month</p><p class="note">A typical ${num(r.size)} sq ft space at $${r.rate} per sq ft a month (${r.year} median for this area). An estimate, not this unit.</p>${r.crt?`<p class="flag">At this rent, the city's Commercial Rent Tax would likely apply.</p>`:""}`,
+  coffee:`<h4>How Much Competition?</h4><p class="big">${o.food?`${o.food} food and drink places`:"No food or drink places"}</p><p class="note">Within about 3 blocks, including ${c.n?`${c.n} coffee and tea places${c.names.length?` such as ${c.names.map(esc).join(", ")}`:""}`:"no coffee or tea places"}.</p>`,
+  subway:`<h4>How Do People Get Here?</h4><p class="big">About ${s.walk} min to the subway</p><p class="note">${esc(s.name)}, about ${num(s.riders)} riders a day.</p>`,
+  alcohol:`<h4>${t==="food"?"Serving Alcohol?":"Places Licensed to Serve Alcohol Nearby"}</h4><p class="big">${o.alcohol} within 500 feet</p><p class="note">This count includes beer and wine. For a full liquor license, the state looks closer when 3 or more full liquor licenses are within 500 feet.</p>`,
+  building:`<h4>What Is the Building's Record?</h4><p>${histLine(h)}</p>${B?`<p class="note">${probLine(B)}</p>`:""}${p.bbl?`<p><button class="about" data-bbl="${esc(p.bbl)}">About This Building</button></p>`:""}`
+ };
+ const order={food:["zoning","rent","coffee","subway","alcohol","building"],retail:["zoning","rent","subway","building"],service:["zoning","rent","subway","building"],community:["zoning","rent","subway","building"],other:["zoning","rent","subway","coffee","alcohol","building"]}[t];
+ const third=t==="food"?[o.food,"food and drink places nearby"]:[`${s.walk} min`,"walk to subway"];
+ el.classList.add("wide");
+ el.innerHTML=`<button class="x0" aria-label="Close">×</button>
+  <button class="back"><span aria-hidden="true">←</span> Back</button>
+  <p class="addr">${esc(p.address)}</p>
+  <h2 tabindex="-1">${TITLE[t]}</h2>
+  ${typeButtons(t)}
+  <div class="tiles">
+   ${t==="other"?`<div><b>${esc(z.district||"Not found")}</b><span>zoning district</span></div>`:`<div><b>${zv?ZW[zv]:"Not found"}</b><span>zoning for this use</span></div>`}
+   <div><b>${money(r.est)}</b><span>rough rent a month</span></div>
+   <div><b>${third[0]}</b><span>${third[1]}</span></div>
+  </div>
+  <ol class="steps">${order.map((k,i)=>`<li><span class="num" aria-hidden="true">${i+1}</span><div>${step[k]}</div></li>`).join("")}</ol>
+  ${METHOD}`;
+ el.scrollTop=0;
+ el.querySelector(".x0").onclick=()=>closeCard(el);
+ el.querySelector(".back").onclick=()=>{el.classList.remove("wide");card(f);setTimeout(()=>{const b=document.querySelector(`#op .types button[data-t="${t}"]`);if(b)b.focus()},300)};
+ el.querySelectorAll(".types button").forEach(b=>b.onclick=()=>{stepView(f,b.dataset.t).then(()=>document.querySelector(`#card .types button[data-t="${b.dataset.t}"]`).focus())});
+ el.querySelectorAll(".about").forEach(btn=>btn.onclick=()=>openBuilding(btn.dataset.bbl,p.address));
+}
+
+// ---------- About This Building ----------
+let BLD=null;
+const STAT_MEAN={"Filed":"The application was accepted; plan review isn't finished.","Reported complete":"The work was reported complete; the city's final sign-off is a separate step.","Finished":"The city signed off on the finished work.","Permit issued":"Work is allowed to go ahead.","Plans approved":"Plans were approved; work can start once a permit is issued.","Changes requested":"A city plan reviewer asked for changes before approving.","Under review":"Waiting for, or with, a city reviewer.","On hold":"Paused, often over paperwork or fees.","Withdrawn":"The applicant cancelled this filing.","Denied":"The city turned this filing down."};
+const money=n=>"$"+Number(n).toLocaleString("en-US");
+const yr=d=>(d||"").slice(0,4);
+async function openBuilding(bbl,fallback){
+ const dlg=document.getElementById("bld"), body=dlg.querySelector(".body");
+ body.innerHTML="<p>Loading...</p>"; dlg.showModal();
+ await getBld();if(!Object.keys(BLD).length){body.innerHTML="<p>Couldn't load this building's record.</p>";return}
+ const b=BLD[bbl]; if(!b){body.innerHTML="<p>No city record found for this building.</p>";return}
+ const facts=[["Used for",b.use],["Built",b.built],["Floors",b.floors],["Homes",b.homes&&+b.homes?b.homes:null],["Shop space",b.retail?Number(b.retail).toLocaleString("en-US")+" sq ft":null],["Zoning",b.zoning],["Owner on record",b.owner]].filter(f=>f[1]);
+ const statuses=[...new Set(b.work.map(w=>w.s))];
+ body.innerHTML=`
+  <h2 id="bld-h">${esc(b.addr||fallback)}</h2>
+  <section><h3>At a Glance</h3><dl class="facts">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></section>
+  ${b.store.length?`<section><h3>Storefront Over the Years</h3><p class="hint">What the owner told the city was in the ground-floor space each December.</p>
+   <ul class="rows">${b.store.map(s=>`<li><b>${s.y}</b><span>${s.vacant?`${s.vacant>1?s.vacant+" storefronts ":""}Vacant`:""}${s.vacant&&s.used.length?" · ":""}${esc(s.used.join(", "))}${s.lease?` · lease ends ${fmt(s.lease)}`:""}</span></li>`).join("")}</ul></section>`:""}
+  <section><h3>Who Was Here Before</h3>${(b.before||[]).length?`<p class="hint">Businesses named in city records at this building, newest first. Only some kinds of business need a city license (delis, smoke shops, resale shops, garages), and restaurant inspection records start around 2022, so this list isn't complete.</p>
+   <ul class="rows">${b.before.slice(0,8).map(who).join("")}</ul>${b.before.length>8?`<details class="more"><summary>Show ${b.before.length-8} more</summary><ul class="rows">${b.before.slice(8).map(who).join("")}</ul></details>`:""}`:`<p class="hint">No business names on record. Most shops, offices and salons don't need a city license, so this doesn't mean the space was always empty.</p>`}</section>
+  <section><h3>Open Violations</h3>${b.probTotal?`<p class="hint">${b.probTotal} still open${b.fines?`, ${money(b.fines)} in fines owed`:""}. Worth asking the owner about before signing a lease.</p>
+   <ul class="rows">${b.probs.map(v=>`<li><b>${esc(v.what)}</b><span>Open since ${yr(v.d)}${v.fine?` · ${money(v.fine)} owed`:""}</span>${v.x?`<span class="x">${esc(v.x)}</span>`:""}</li>`).join("")}</ul>${b.probTotal>b.probs.length?`<p class="hint">Showing the ${b.probs.length} most recent.</p>`:""}`:`<p class="hint">None on record.</p>`}</section>
+  <section><h3>Work at This Building Since 2019</h3>${b.work.length?`
+   <details class="legend"><summary>What the statuses mean</summary><dl>${statuses.map(s=>`<div><dt>${esc(s)}</dt><dd>${esc(STAT_MEAN[s]||(s.startsWith("Changes requested")?"A reviewer asked for changes and nothing has moved since that year.":""))}</dd></div>`).join("")}</dl></details>
+   <ul class="rows">${b.work.map(w=>`<li><b>${esc(w.what)}</b><span>${fmt(w.d)} · <em class="chip">${esc(w.s)}</em></span>${w.x?`<span class="x">${esc(w.x)}</span>`:""}</li>`).join("")}</ul>${b.workTotal>b.work.length?`<p class="hint">Showing the ${b.work.length} most recent of ${b.workTotal}.</p>`:""}`:`<p class="hint">No permits filed since 2019.</p>`}</section>
+  <p class="src">From NYC tax lot data, Buildings Dept. permits and violations, the storefront registry, city business licenses and Health Dept. restaurant inspections. <a href="${bisLink(bbl)}" target="_blank" rel="noopener">See the city's full record</a></p>`;
+ dlg.querySelector(".body").scrollTop=0;
+}
+
+// ---------- map ----------
+mapboxgl.accessToken="pk.eyJ1IjoiajAwYnkiLCJhIjoiY2x1bHUzbXZnMGhuczJxcG83YXY4czJ3ayJ9.S5PZpU9VDwLMjoX_0x5FDQ";
+const bb=D.boundary.coordinates.flat(3), xs=bb.filter((_,i)=>i%2===0), ys=bb.filter((_,i)=>i%2);
+const narrow=matchMedia("(max-width:760px)").matches;
+const map=new mapboxgl.Map({container:"map",style:"mapbox://styles/mapbox/light-v11",bounds:[[Math.min(...xs),Math.min(...ys)],[Math.max(...xs),Math.max(...ys)]],
+ fitBoundsOptions:{padding:narrow?{top:16,bottom:innerHeight*.5+8,left:16,right:16}:{top:24,bottom:24,left:400,right:24}},attributionControl:true});
+map.addControl(new mapboxgl.NavigationControl({showCompass:false}),"bottom-right");
+const BASE={land:"#F5F2E8",water:"#AEBEDD",park:"#E2E5D2",building:"#E9E5D8",label:"#5E594F",veil:"rgba(32,30,26,.07)",road:"#ffffff"};
+function warmBase(){
+ for(const L of map.getStyle().layers){
+  const id=L.id;
+  if(/poi|transit|airport|natural|ferry|aerialway|waterway-label|water-point|water-line-label/.test(id)&&L.type==="symbol"){map.setLayoutProperty(id,"visibility","none");continue}
+  if(L.type==="background")map.setPaintProperty(id,"background-color",BASE.land);
+  else if(id==="water")map.setPaintProperty(id,"fill-color",BASE.water);
+  else if(/landuse|park|pitch|national/.test(id)&&L.type==="fill")map.setPaintProperty(id,"fill-color",BASE.park);
+  else if(id==="building")map.setPaintProperty(id,"fill-color",BASE.building);
+  else if(L.type==="symbol"&&L.layout&&L.layout["text-field"]){
+   map.setLayoutProperty(id,"text-size",12);
+   map.setPaintProperty(id,"text-color",BASE.label);map.setPaintProperty(id,"text-halo-color",BASE.land);map.setPaintProperty(id,"text-halo-width",1.5);
+  }
+ }
+}
+const symSize=["interpolate",["linear"],["zoom"],12,.6,14,.8,16,1.05,18,1.45];
+function filter(){setIcons();
+ if(!map.getLayer("pts"))return;
+ const keys=Object.keys(subOn).filter(k=>subOn[k]&&on[k.split(":")[0]]);
+ const f=["in",["get","sym"],["literal",keys]];
+ map.setFilter("pts",f);
+ map.setFilter("names",["all",f,["has","name"]]);
+}
+function pick(id){
+ const f=F.find(x=>x.properties.id===id);if(!f)return;const p=f.properties;
+ // a card never points at a hidden marker
+ if(!on[p.layer]||!subOn[p.sym]){if(!VIEWS[view].includes(p.layer))setView(VIEWS.store.includes(p.layer)?"store":"built");on[p.layer]=true;subOn[p.sym]=true;drawLayers();filter()}
+ map.getSource("sel").setData(f);card(f);
+ // keep the marker clear of the panels
+ const pad=narrow?{top:16,bottom:innerHeight*.62+16,left:16,right:16}:{top:24,bottom:24,left:400,right:420};
+ const pt=map.project(f.geometry.coordinates), w=map.getContainer().clientWidth, h=map.getContainer().clientHeight;
+ if(pt.x<pad.left||pt.x>w-pad.right||pt.y<pad.top||pt.y>h-pad.bottom)map.easeTo({center:f.geometry.coordinates,padding:pad,duration:400});
+}
+// ---------- background: land use or zoning ----------
+const LUG=[["Homes",["01","02","03"],"#E8D49A"],["Homes with Shops or Offices",["04"],"#EDB98B"],["Offices and Shops",["05"],"#E6A3A8"],
+ ["Industrial and Utility",["06","07"],"#C6B6DC"],["Schools, Hospitals and Public Buildings",["08"],"#A8C3E5"],["Parks and Open Space",["09"],"#B3D2A5"],["Parking and Empty Lots",["10","11"],"#CEC8BA"]];
+const ZF=[["Mainly Homes (R)","R","#E8D49A"],["Shops, Offices and Homes (C)","C","#E6A3A8"],["Manufacturing (M)","M","#C6B6DC"],["Parks","P","#B3D2A5"]];
+const SPN={CL:"Special Clinton District",HY:"Special Hudson Yards District",MiD:"Special Midtown District",HRP:"Special Hudson River Park District",HRW:"Special Hudson River Park District",L:"Special Lincoln Square District",MSX:"Special Midtown South Mixed-Use District"};
+const LUN=Object.fromEntries(LUG.flatMap(([n,codes])=>codes.map(c=>[c,n])));
+let base="off", LOTS=null, ZON=null;
+function zPlain(z,o,sp){
+ if(!z)return null;
+ let k={R:"homes",C:"shops, offices and homes",M:"manufacturing and some businesses"}[z[0]]||"";
+ if(z.startsWith("PARK"))k="park";
+ if(z[0]==="R"&&o)k="homes, with shops allowed on the lower floors";
+ return `${z}${o?" / "+o:""}: zoned for ${k}${sp?`, in the ${SPN[sp]||"special district "+sp}`:""}`;
+}
+function drawKey(){
+ document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.b===base));
+ const el=document.getElementById("basekey");
+ if(base==="lu"&&LOTS){const c={};LOTS.features.forEach(f=>{const n=LUN[f.properties.lu];if(n)c[n]=(c[n]||0)+1});
+  el.innerHTML=`<ul>${LUG.map(([n,,col])=>`<li><span class="sw2" style="background:${col}"></span><span>${n}</span><span class="n">${c[n]||0}</span></li>`).join("")}</ul><p class="hint">Lots by what is on them today. Tap a lot for details.</p>`}
+ else if(base==="zn")el.innerHTML=`<ul>${ZF.map(([n,,col])=>`<li><span class="sw2" style="background:${col}"></span><span>${n}</span><span></span></li>`).join("")}
+  <li><span class="sw2" style="background:repeating-linear-gradient(135deg,#F5F2E8 0 3px,#201E1A 3px 4.5px)"></span><span>Commercial Overlay: Shops Allowed on Lower Floors</span><span></span></li>
+  <li><span class="sw2" style="border:0;border-top:3px dashed #2B5FC9;height:0;align-self:center"></span><span>Special District Edge</span><span></span></li></ul><p class="hint">What the rules allow. Tap a lot for details.</p>`;
+ else el.innerHTML="";
+}
+let baseP=null;
+const mapReady=new Promise(r=>map.loaded()?r():map.once("load",r));
+async function setBase(b){
+ base=b;
+ if(b!=="off"&&!baseP)baseP=Promise.all([fetch("landuse.json").then(r=>r.json()),fetch("zoning.json").then(r=>r.json()),mapReady]).then(([l,z])=>{LOTS=l;ZON=z;addBase()});
+ if(b!=="off")await baseP;
+ if(map.getLayer("lu-fill")){
+  map.setLayoutProperty("lu-fill","visibility",b==="off"?"none":"visible");
+  map.setPaintProperty("lu-fill","fill-opacity",b==="lu"?.8:0);
+  map.setLayoutProperty("lu-line","visibility",b==="lu"?"visible":"none");
+  ["zn-fill","zn-line","zn-over","sp-line","zn-lab","sp-lab"].forEach(id=>map.setLayoutProperty(id,"visibility",b==="zn"?"visible":"none"));
+ }
+ drawKey();
+}
+function hatch(){const c=document.createElement("canvas");c.width=c.height=16;const g=c.getContext("2d");g.strokeStyle="rgba(32,30,26,.55)";g.lineWidth=1.5;
+ for(let i=-16;i<=32;i+=8){g.beginPath();g.moveTo(i,16);g.lineTo(i+16,0);g.stroke()}return g.getImageData(0,0,16,16)}
+function addBase(){
+ const before="veil";
+ map.addSource("lots",{type:"geojson",data:LOTS});
+ map.addSource("zd",{type:"geojson",data:ZON.districts});map.addSource("co",{type:"geojson",data:ZON.overlays});
+ map.addSource("sp",{type:"geojson",data:ZON.special});map.addSource("zl",{type:"geojson",data:ZON.labels});
+ map.addImage("hatch",hatch());
+ map.addLayer({id:"lu-fill",type:"fill",source:"lots",paint:{"fill-color":["match",["get","lu"],...LUG.flatMap(([,codes,col])=>[codes,col]),"#E9E5D8"],"fill-opacity":.8}},before);
+ map.addLayer({id:"lu-line",type:"line",source:"lots",paint:{"line-color":"#F5F2E8","line-width":.6}},before);
+ map.addLayer({id:"zn-fill",type:"fill",source:"zd",paint:{"fill-color":["case",["==",["slice",["get","z"],0,4],"PARK"],"#B3D2A5",["match",["slice",["get","z"],0,1],"R","#E8D49A","C","#E6A3A8","M","#C6B6DC","#E9E5D8"]],"fill-opacity":.6}},before);
+ map.addLayer({id:"zn-over",type:"fill",source:"co",paint:{"fill-pattern":"hatch","fill-opacity":.7}},before);
+ map.addLayer({id:"zn-line",type:"line",source:"zd",paint:{"line-color":"#201E1A","line-width":1,"line-opacity":.6}},before);
+ map.addLayer({id:"sp-line",type:"line",source:"sp",paint:{"line-color":"#2B5FC9","line-width":3,"line-dasharray":[2,1.5]}},before);
+ map.addLayer({id:"zn-lab",type:"symbol",source:"zl",layout:{"text-field":["get","z"],"text-size":12,"text-font":["DIN Pro Bold","Arial Unicode MS Bold"],"text-allow-overlap":false},paint:{"text-color":"#201E1A","text-halo-color":"#F5F2E8","text-halo-width":2}},"pts");
+ map.addLayer({id:"sp-lab",type:"symbol",source:"sp",layout:{"symbol-placement":"line","text-field":["get","n"],"text-size":12,"text-font":["DIN Pro Medium","Arial Unicode MS Regular"],"symbol-spacing":400},paint:{"text-color":"#2B5FC9","text-halo-color":"#F5F2E8","text-halo-width":2}},"pts");
+ map.on("click",e=>{
+  if(base==="off"||map.queryRenderedFeatures(e.point,{layers:["pts"]}).length)return;
+  const lot=map.queryRenderedFeatures(e.point,{layers:["lu-fill"]})[0]; if(lot)lotCard(lot.properties);
+ });
+}
+async function lotCard(q){
+ const el=document.getElementById("card"); el.classList.remove("wide");
+ const B=await getBld().catch(()=>null), has=B&&q.bbl&&B[q.bbl];
+ const facts=[["Used for",LUN[q.lu]],["Zoning",zPlain(q.z,q.o,q.sp)],["Floors",q.fl&&+q.fl?Math.round(+q.fl):null],["Built",q.yb&&+q.yb?q.yb:null],["Homes",q.u&&+q.u?q.u:null]].filter(x=>x[1]);
+ el.innerHTML=`<button class="x0" aria-label="Close">×</button><p class="k">Property</p><h2>${esc(q.a||"Lot "+q.bbl)}</h2>
+  <dl class="lotfacts">${facts.map(([k,v])=>`<div${k==="Zoning"?' style="grid-column:1/-1"':""}><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+  ${has?`<p><button class="about" data-bbl="${esc(q.bbl)}">About This Building</button></p>`:""}
+  <p class="note" style="color:var(--ink2)">From City Planning's tax lot data. Confirm zoning with the Buildings Dept. before signing a lease.</p>`;
+ openCard(el);
+ el.querySelectorAll(".about").forEach(b=>b.onclick=()=>openBuilding(b.dataset.bbl,q.a));
+ el.querySelector(".x0").onclick=()=>closeCard(el);
+}
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setBase(b.dataset.b).then(()=>b.focus()));
+map.on("load",()=>{
+ warmBase();
+ const firstLabel=map.getStyle().layers.find(l=>l.type==="symbol").id;
+ // the neighborhood stays bright; everything outside sits under a warm veil, no outline
+ const holes=D.boundary.coordinates.map(p=>p[0]);
+ map.addSource("veil",{type:"geojson",data:{type:"Feature",geometry:{type:"Polygon",coordinates:[[[-74.3,40.5],[-73.6,40.5],[-73.6,41],[-74.3,41],[-74.3,40.5]],...holes]}}});
+ map.addLayer({id:"veil",type:"fill",source:"veil",paint:{"fill-color":BASE.veil}},firstLabel);
+ map.addSource("hk",{type:"geojson",data:{type:"Feature",geometry:D.boundary}});
+ map.addLayer({id:"hk-edge",type:"line",source:"hk",paint:{"line-color":"#201E1A","line-width":["interpolate",["linear"],["zoom"],12,1.5,16,3],"line-opacity":.85}},firstLabel);
+ Object.entries(CV).forEach(([k,cv])=>map.addImage(k,cv.getContext("2d").getImageData(0,0,cv.width,cv.height),{pixelRatio:PR}));
+ map.addSource("pts",{type:"geojson",data:{type:"FeatureCollection",features:F}});
+ map.addLayer({id:"pts",type:"symbol",source:"pts",layout:{"icon-image":["get","sym"],"icon-size":symSize,"icon-offset":["get","off"],"icon-allow-overlap":true,"icon-ignore-placement":true,"symbol-sort-key":["get","z"]}});
+ // business names appear once you zoom to street level
+ map.addLayer({id:"names",type:"symbol",source:"pts",minzoom:16,layout:{"text-field":["get","name"],"text-size":12,"text-font":["DIN Pro Medium","Arial Unicode MS Regular"],"text-anchor":"left","text-offset":["get","toff"],"text-max-width":10,"text-optional":true,"symbol-sort-key":["-",100,["get","z"]]},paint:{"text-color":"#201E1A","text-halo-color":"#F5F2E8","text-halo-width":2}});
+ map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"sel",type:"symbol",source:"sel",layout:{"icon-image":"sel","icon-size":symSize,"icon-offset":["get","off"],"icon-allow-overlap":true,"icon-ignore-placement":true}});
+ filter();
+ // Just Opened: business name, address, date it opened or finished; other layers: address + label
+ const tip=p=>p.layer==="opened"?`<b>${esc(p.name||p.label)}</b><br>${esc(p.address)}<br><span class="tipd">${p.kind==="food_open"?"First inspected":"Finished"} ${fmt(p.date)}</span>`:`<b>${esc(p.address)}</b><br>${esc(p.label)}`;
+ const pop=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12});
+ map.on("mousemove","pts",e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties;pop.setLngLat(e.lngLat).setHTML(tip(p)).addTo(map)});
+ map.on("mouseleave","pts",()=>{map.getCanvas().style.cursor="";pop.remove()});
+ map.on("click","pts",e=>pick(e.features[0].properties.id));
+ map.once("idle",()=>{window.__ready=true;const m=location.hash.match(/^#pick=(\d+)(?:&type=(\w+))?$/);if(m){pick(+m[1]);if(m[2])stepView(F.find(x=>x.properties.id===+m[1]),m[2])}});
+});
+drawLayers();
+// address search: matches every marker, opens its card
+(()=>{const q=document.getElementById("q"),res=document.getElementById("qres");
+ const norm=s=>String(s||"").toLowerCase().replace(/(\d+)(st|nd|rd|th)\b/g,"$1").replace(/\bw\b/g,"west").replace(/\bave?\b/g,"avenue").replace(/\bst\b/g,"street").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+ const idx=F.map(f=>[norm(f.properties.address+" "+(f.properties.name||"")),f]);
+ q.oninput=()=>{const t=norm(q.value);if(t.length<2){res.hidden=true;res.innerHTML="";return}
+  const hits=idx.filter(([k])=>t.split(" ").every(w=>k.includes(w))).slice(0,8);
+  res.innerHTML=hits.length?hits.map(([,f])=>`<li><button data-id="${f.properties.id}">${esc(f.properties.address)}<small>${esc(f.properties.label)}${f.properties.name?" · "+esc(f.properties.name):""}</small></button></li>`).join(""):`<li><button disabled>No matches on the map</button></li>`;
+  res.hidden=false;res.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>{res.hidden=true;pick(+b.dataset.id)})};
+ q.onkeydown=e=>{if(e.key==="Enter"){const b=res.querySelector("button[data-id]");if(b)b.click()}if(e.key==="Escape"){res.hidden=true}};
+})();
+const h=location.hash.match(/^#bld=(\d{10})$/); if(h)openBuilding(h[1],"");
+</script>
+</body>
+</html>
