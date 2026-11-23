@@ -131,6 +131,11 @@ body.has-mini .mapboxgl-ctrl-bottom-right{bottom:72px}
 #card.wide .types{grid-template-columns:repeat(3,1fr)}
 #card.wide .types button:nth-child(n+4){grid-column:span 1}
 #card.wide .types button{text-align:center;padding:6px 6px;line-height:1.2}
+.be .chips{display:flex;gap:6px;margin:2px 0 8px}
+.be .chips button{font:inherit;font-weight:var(--w2);min-height:40px;padding:0 14px;border:2px solid var(--ink);border-radius:999px;background:var(--paper);color:var(--ink);cursor:pointer}
+.be .chips button[aria-pressed=true]{background:var(--accent)}
+.be .sub2{margin:6px 0 2px;font-weight:var(--w2)}
+.be .hl2{margin:2px 0 6px;font-weight:var(--w1);color:var(--ink)}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 6px}
 .tiles div{background:var(--bg);border-radius:6px;padding:10px;display:flex;flex-direction:column}
 .tiles b{font-size:var(--f2);font-weight:var(--w1);line-height:1.15}
@@ -389,11 +394,12 @@ const METHOD=`<details class="how"><summary>How We Estimate This</summary>
  <p><b>Zoning.</b> A rough read of the zoning district and any commercial overlay. On blocks zoned for homes, City of Yes (2024) lets empty ground-floor storefronts in residential buildings reopen with local shops, restaurants and offices (Zoning Resolution 52-61). City of Yes (2024) reorganized the use rules, so confirm with the Buildings Dept. or a zoning professional before signing. Not legal advice.</p>
  <p><b>Competition.</b> Food and drink places, and coffee and tea places, within 250 m (about 3 blocks) in health inspection records, leaving out places with no inspection in the last 18 months.</p>
  <p><b>Subway.</b> Nearest station and average daily riders in October 2026. Walk time is the straight-line distance plus 30%, at about 80 m a minute.</p>
+ <p><b>Yoga or fitness studio.</b> Residents aged 25 to 44 and household income come from the Census (American Community Survey 2020 to 2024), counting whole census tracts whose center is within 800 m, about a 10-minute walk. People who work nearby come from Census job counts by block (2022). Studios and gyms come from OpenStreetMap, which misses some. Members to break even: rent for a 1,500 sq ft studio, divided by the share of costs you expect rent to be, divided by the monthly price. A rough guide, not a business plan.</p>
  <p><b>Alcohol.</b> Active on-site licenses within 500 feet from the State Liquor Authority, including beer and wine. The state takes a closer look at a new full liquor license when 3 or more are within 500 feet.</p>
 </details>`;
 // D2: pick a business type, answers tailored to it
-const TYPES={food:"Food and Drink",retail:"Retail Shop",service:"Service",community:"Community or Health Space",other:"Something Else"};
-const TITLE={food:"Opening a Food or Drink Place",retail:"Opening a Retail Shop",service:"Opening a Service Business",community:"Opening a Community or Health Space",other:"Opening a Business Here"};
+const TYPES={food:"Food and Drink",retail:"Retail Shop",service:"Service",community:"Community or Health Space",fitness:"Yoga or Fitness Studio",other:"Something Else"};
+const TITLE={food:"Opening a Food or Drink Place",retail:"Opening a Retail Shop",service:"Opening a Service Business",community:"Opening a Community or Health Space",fitness:"Opening a Yoga or Fitness Studio",other:"Opening a Business Here"};
 const SPECIAL={CL:"Special Clinton District",HY:"Special Hudson Yards District",MiD:"Special Midtown District",HRW:"Special Hudson River Park District"};
 let curType=null;
 function typeButtons(sel){return `<div class="types" role="group" aria-label="What kind of space?">${Object.entries(TYPES).map(([k,n])=>`<button data-t="${k}" aria-pressed="${k===sel}">${n}</button>`).join("")}</div>`}
@@ -403,23 +409,39 @@ async function fillOpening(f){
  el.innerHTML=`<p class="hl">${histLine(hist(o))}</p><h3>Thinking of Opening Here?</h3><p class="sub2">What kind of space?</p>${typeButtons(null)}`;
  el.querySelectorAll(".types button").forEach(b=>b.onclick=()=>stepView(f,b.dataset.t).then(()=>document.querySelector("#card h2").focus()));
 }
+// yoga or fitness studio: everything within 800 m of the storefront, summed in the browser
+let FIT=null;const fitP=()=>FIT?Promise.resolve(FIT):fetch("fitness.json").then(r=>r.json()).then(j=>FIT=j).catch(()=>FIT={tracts:[],jobs:[],studios:[]});
+const mDist=(a,b)=>Math.hypot((a[0]-b[0])*84300,(a[1]-b[1])*111000);
+function fitNear(ll){const W=800,tr=FIT.tracts.filter(t=>mDist(t,ll)<=W),inc=tr.map(t=>t[4]).filter(Boolean).sort((a,b)=>a-b),st=FIT.studios.filter(x=>mDist(x,ll)<=W).sort((a,b)=>mDist(a,ll)-mDist(b,ll));
+ return{a2544:tr.reduce((s,t)=>s+t[2],0),pop:tr.reduce((s,t)=>s+t[3],0),inc:inc.length?inc[Math.floor(inc.length/2)]:null,jobs:FIT.jobs.filter(j=>mDist(j,ll)<=W).reduce((s,j)=>s+j[2],0),yoga:st.filter(x=>x[3]==="yoga").map(x=>x[2]),gym:st.filter(x=>x[3]==="gym").map(x=>x[2])}}
+const BE={price:180,share:.4},STUDIO_SQFT=1500;
+function beHTML(rate,fn){const rent=rate*STUDIO_SQFT,costs=rent/BE.share,mem=Math.ceil(costs/BE.price),one=fn.a2544?Math.round(fn.a2544/mem):null;
+ const chip=(k,v,l)=>`<button data-k="${k}" data-v="${v}" aria-pressed="${BE[k]===v}">${l}</button>`;
+ return`<h4>How Many Members to Break Even?</h4><div class="be"><p class="sub2">Monthly membership</p><div class="chips" role="group" aria-label="Monthly membership">${[150,180,220].map(v=>chip("price",v,"$"+v)).join("")}</div>
+ <p class="sub2">Rent as a share of all your costs (your guess)</p><div class="chips" role="group" aria-label="Rent as a share of costs">${[.3,.4,.5].map(v=>chip("share",v,Math.round(v*100)+"%")).join("")}</div>
+ <p class="big">About ${num(mem)} members</p>${one?`<p class="hl2">1 in ${num(one)} residents aged 25 to 44 within a 10-minute walk</p>`:""}
+ <p class="note">Rent for a ${num(STUDIO_SQFT)} sq ft studio at $${rate} per sq ft is about ${money(Math.round(rent/100)*100)} a month, so all costs come to about ${money(Math.round(costs/100)*100)}. People who work nearby can join too, which makes this easier.</p></div>`}
 async function stepView(f,t){
  curType=t; const p=f.properties, el=document.getElementById("card");
  await openP; const B=p.bbl?(await getBld())[p.bbl]:null; const o=OPEN[p.id]; if(!o)return;
  const r=o.rent,z=o.zoning,c=o.coffee,s=o.subway, h=hist(o);
+ if(t==="fitness")await fitP(); const fn=t==="fitness"?fitNear(f.geometry.coordinates):null;
  const zv=t==="community"?z.community:z.coffee; // shops, food and services share the commercial-use read
  const zd=(z.district||"").split(" / ");
  const zone=z.district?`${esc(zPlain(zd[0],zd[1],z.special))}.`:"";
  const step={
-  zoning:`<h4>Can It Open Here?</h4>${t==="other"?`<ul class="zl"><li><span>Shop, Restaurant or Service</span>${ans(z.coffee)}</li><li><span>Community or Health Space</span>${ans(z.community)}</li></ul>`:`<p>${ans(zv)}</p>`}<p class="note">${zone}${z.reopen&&t!=="community"?" The block is zoned for homes, but since 2024 (City of Yes) an empty ground-floor storefront in a residential building can reopen as a local shop, restaurant or office.":""} Confirm with the Buildings Dept. before signing.</p>`,
+  zoning:`<h4>Can It Open Here?</h4>${t==="other"?`<ul class="zl"><li><span>Shop, Restaurant or Service</span>${ans(z.coffee)}</li><li><span>Community or Health Space</span>${ans(z.community)}</li></ul>`:`<p>${ans(zv)}</p>`}<p class="note">${zone}${z.reopen&&t!=="community"?" The block is zoned for homes, but since 2024 (City of Yes) an empty ground-floor storefront in a residential building can reopen as a local shop, restaurant or office.":""} ${t==="fitness"?" Gyms and studios used to need a special permit from the Board of Standards and Appeals; recent city zoning changes eased that.":""} Confirm with the Buildings Dept. before signing.</p>`,
   rent:`<h4>What Might Rent Cost?</h4><p class="big">About ${money(r.est)} a month</p><p class="note">A typical ${num(r.size)} sq ft space at $${r.rate} per sq ft a month (${r.year} median for this area). An estimate, not this unit.</p>${r.crt?`<p class="flag">At this rent, the city's Commercial Rent Tax would likely apply.</p>`:""}`,
   coffee:`<h4>How Much Competition?</h4><p class="big">${o.food?`${o.food} food and drink places`:"No food or drink places"}</p><p class="note">Within about 3 blocks, including ${c.n?`${c.n} coffee and tea places${c.names.length?` such as ${c.names.map(esc).join(", ")}`:""}`:"no coffee or tea places"}.</p>`,
   subway:`<h4>How Do People Get Here?</h4><p class="big">About ${s.walk} min to the subway</p><p class="note">${esc(s.name)}, about ${num(s.riders)} riders a day.</p>`,
   alcohol:`<h4>${t==="food"?"Serving Alcohol?":"Places Licensed to Serve Alcohol Nearby"}</h4><p class="big">${o.alcohol} within 500 feet</p><p class="note">This count includes beer and wine. For a full liquor license, the state looks closer when 3 or more full liquor licenses are within 500 feet.</p>`,
+  demand:fn?`<h4>Who's Within a 10-Minute Walk?</h4><p class="big">${num(fn.a2544)} residents aged 25 to 44</p><p class="note">Out of ${num(fn.pop)} people living nearby, plus about ${num(fn.jobs)} people who work nearby.${fn.inc?` Typical household income about $${num(Math.round(fn.inc/1000))}k.`:""}</p>`:"",
+  studios:fn?`<h4>How Much Competition?</h4><p class="big">${fn.yoga.length?`${fn.yoga.length} yoga or pilates ${fn.yoga.length>1?"studios":"studio"}`:"No yoga or pilates studios found"}</p><p class="note">${fn.yoga.length?`${fn.yoga.slice(0,4).map(esc).join(", ")}. `:""}${fn.gym.length?`Plus ${fn.gym.length} gyms such as ${fn.gym.slice(0,3).map(esc).join(", ")}. `:""}From OpenStreetMap, which misses some studios, so walk the blocks before trusting a gap.</p>`:"",
+  breakeven:fn&&r.rate?`<div id="be">${beHTML(r.rate,fn)}</div>`:"",
   building:`<h4>What Is the Building's Record?</h4><p>${histLine(h)}</p>${B?`<p class="note">${probLine(B)}</p>`:""}${p.bbl?`<p><button class="about" data-bbl="${esc(p.bbl)}">About This Building</button></p>`:""}`
  };
- const order={food:["zoning","rent","coffee","subway","alcohol","building"],retail:["zoning","rent","subway","building"],service:["zoning","rent","subway","building"],community:["zoning","rent","subway","building"],other:["zoning","rent","subway","coffee","alcohol","building"]}[t];
- const third=t==="food"?[o.food,"food and drink places nearby"]:[`${s.walk} min`,"walk to subway"];
+ const order={food:["zoning","rent","coffee","subway","alcohol","building"],retail:["zoning","rent","subway","building"],service:["zoning","rent","subway","building"],community:["zoning","rent","subway","building"],fitness:["zoning","demand","studios","breakeven","subway","building"],other:["zoning","rent","subway","coffee","alcohol","building"]}[t];
+ const third=t==="food"?[o.food,"food and drink places nearby"]:t==="fitness"&&fn?[num(fn.a2544),"residents aged 25 to 44 within a 10-minute walk"]:[`${s.walk} min`,"walk to subway"];
  el.classList.add("wide");
  el.innerHTML=`<button class="x0" aria-label="Close">×</button>
   <button class="back"><span aria-hidden="true">←</span> Back</button>
@@ -428,13 +450,14 @@ async function stepView(f,t){
   ${typeButtons(t)}
   <div class="tiles">
    ${t==="other"?`<div><b>${esc(z.district||"Not found")}</b><span>zoning district</span></div>`:`<div><b>${zv?ZW[zv]:"Not found"}</b><span>zoning for this use</span></div>`}
-   <div><b>${money(r.est)}</b><span>rough rent a month</span></div>
+   ${t==="fitness"&&r.rate?`<div><b>${money(Math.round(r.rate*STUDIO_SQFT/100)*100)}</b><span>rough rent a month for 1,500 sq ft</span></div>`:`<div><b>${money(r.est)}</b><span>rough rent a month</span></div>`}
    <div><b>${third[0]}</b><span>${third[1]}</span></div>
   </div>
   <ol class="steps">${order.map((k,i)=>`<li><span class="num" aria-hidden="true">${i+1}</span><div>${step[k]}</div></li>`).join("")}</ol>
   ${METHOD}`;
  el.scrollTop=0;
  el.querySelector(".x0").onclick=()=>closeCard(el);
+ const wireBE=()=>{const box=el.querySelector("#be");if(!box)return;box.querySelectorAll(".chips button").forEach(b=>b.onclick=()=>{BE[b.dataset.k]=+b.dataset.v;box.innerHTML=beHTML(r.rate,fn);wireBE();box.querySelector(`.chips button[data-k="${b.dataset.k}"][data-v="${b.dataset.v}"]`).focus()})};wireBE();
  el.querySelector(".back").onclick=()=>{el.classList.remove("wide");card(f);setTimeout(()=>{const b=document.querySelector(`#op .types button[data-t="${t}"]`);if(b)b.focus()},300)};
  el.querySelectorAll(".types button").forEach(b=>b.onclick=()=>{stepView(f,b.dataset.t).then(()=>document.querySelector(`#card .types button[data-t="${b.dataset.t}"]`).focus())});
  el.querySelectorAll(".about").forEach(btn=>btn.onclick=()=>openBuilding(btn.dataset.bbl,p.address));
