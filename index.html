@@ -172,6 +172,19 @@ summary{min-height:44px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .find input:focus{border-color:var(--focus);outline:none}
 .find ul{list-style:none;margin:4px 0 0;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff;max-height:300px;overflow:auto}
 .find li button{display:block;width:100%;text-align:left;font:inherit;min-height:44px;padding:8px 12px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
+.find li.hd{font-size:var(--f4);font-weight:var(--w2);color:var(--ink2);padding:6px 12px 2px;border-top:1px solid var(--line)}
+.find li.hd:first-child{border-top:0}
+.near .rad{display:flex;gap:6px;margin:6px 0 8px}
+.near .rad button{font:inherit;font-weight:var(--w2);min-height:36px;padding:0 12px;border:1.5px solid var(--ink);border-radius:999px;background:var(--paper);color:var(--ink);cursor:pointer}
+.near .rad button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.near .cnt{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 0}
+.near .cnt div{background:var(--bg);border-radius:8px;padding:6px 10px}
+.near .cnt b{display:block;font-size:var(--f1);font-weight:var(--w1)}
+.near .here{background:var(--bg);border-radius:8px;padding:8px 10px;margin:8px 0}
+.near h3{color:var(--accent);font-size:var(--f3);margin:12px 0 4px}
+.near ul{list-style:none;margin:0;padding:0}
+.near li button{display:block;width:100%;text-align:left;font:inherit;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);padding:8px 0;cursor:pointer;min-height:44px}
+.near li button small{display:block;color:var(--ink2)}
 .find li:first-child button{border-top:0}
 .find li button:hover,.find li button:focus{background:var(--bg)}
 .find small{display:block;color:var(--ink2);font-size:var(--f4)}
@@ -484,7 +497,7 @@ async function openBuilding(bbl,fallback){
  const facts=[["Used for",b.use],["Built",b.built],["Floors",b.floors],["Homes",b.homes&&+b.homes?b.homes:null],["Shop space",b.retail?Number(b.retail).toLocaleString("en-US")+" sq ft":null],["Zoning",b.zoning],["Owner on record",b.owner]].filter(f=>f[1]);
  const statuses=[...new Set(b.work.map(w=>w.s))];
  body.innerHTML=`
-  <h2 id="bld-h">${esc(fallback||b.addr)}</h2>${fallback&&b.addr&&fallback.toLowerCase()!==b.addr.toLowerCase()?`<p class="hint">City tax lot address: ${esc(b.addr)}</p>`:""}
+  <h2 id="bld-h">${esc(fallback||b.addr)}</h2>${fallback&&b.addr&&fallback.toLowerCase()!==b.addr.toLowerCase()?`<p class="hint">City tax lot address: ${esc(b.addr)}</p>`:""}${(sp=>sp?`<p><a href="${SV(sp)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:var(--w2)">Walk around in Street View</a></p>`:"")(bldSpot(bbl))}
   <section><h3>At a Glance</h3><dl class="facts">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></section>
   ${b.store.length?`<section><h3>Storefront Over the Years</h3><p class="hint">What the owner told the city was in the ground-floor space each December.</p>
    <ul class="rows">${b.store.map(s=>`<li><b>${s.y}</b><span>${s.vacant?`${s.vacant>1?s.vacant+" storefronts ":""}Vacant`:""}${s.vacant&&s.used.length?" · ":""}${esc(s.used.join(", "))}${s.lease?` · lease ends ${fmt(s.lease)}`:""}</span></li>`).join("")}</ul></section>`:""}
@@ -628,6 +641,10 @@ map.on("load",()=>{
  map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
  map.addLayer({id:"selpt",type:"symbol",source:"sel",layout:{"icon-image":["get","sym"],"icon-size":symSize,"icon-offset":["get","off"],"icon-allow-overlap":true,"icon-ignore-placement":true}});
  map.addLayer({id:"sel",type:"symbol",source:"sel",layout:{"icon-image":"sel","icon-size":symSize,"icon-offset":["get","off"],"icon-allow-overlap":true,"icon-ignore-placement":true}});
+ map.addSource("near",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"near-fill",type:"fill",source:"near",filter:["==",["geometry-type"],"Polygon"],paint:{"fill-color":"#FFFFFF","fill-opacity":.3}},"pts");
+ map.addLayer({id:"near-line",type:"line",source:"near",filter:["==",["geometry-type"],"Polygon"],paint:{"line-color":"#201E1A","line-width":2,"line-dasharray":[2,1.5]}},"pts");
+ map.addLayer({id:"near-pt",type:"circle",source:"near",filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":8,"circle-color":"#201E1A","circle-stroke-color":"#FFFFFF","circle-stroke-width":3}});
  filter();
  // Just Opened: business name, address, date it opened or finished; other layers: address + label
  const tip=p=>p.layer==="opened"?`<b>${esc(p.name||p.label)}</b><br>${esc(p.address)}<br><span class="tipd">${p.kind==="food_open"?"First inspected":"Finished"} ${fmt(p.date)}</span>`:`<b>${esc(p.address)}</b><br>${esc(p.label)}`;
@@ -637,20 +654,75 @@ map.on("load",()=>{
  map.on("click","pts",e=>pick(e.features[0].properties.id));
  map.on("click",e=>{lastLL=[e.lngLat.lng,e.lngLat.lat]});
  map.once("idle",()=>{window.__ready=true;
+  const nm=location.hash.match(/^#near=(-?[\d.]+),(-?[\d.]+)(?:&a=([^&]*))?$/);if(nm)near([+nm[1],+nm[2]],nm[3]?decodeURIComponent(nm[3]):"This spot");
   const b=location.hash.match(/^#bld=(\d{10})(?:&rec=([\w:.-]+))?$/);
   if(b){const f=(b[2]&&F.find(x=>x.properties.items.some(i=>i.src+"-"+i.id===b[2])))||F.find(x=>x.properties.bbl===b[1]);
    if(f)pick(f.properties.id); openBuilding(b[1],f?f.properties.address:"")}const m=location.hash.match(/^#pick=(\d+)(?:&type=(\w+))?$/);if(m){pick(+m[1]);if(m[2])stepView(F.find(x=>x.properties.id===+m[1]),m[2])}});
 });
 drawLayers();
-// address search: matches every marker, opens its card
+// near this address: Street View link, point-in-lot, radius counts
+const SV=ll=>`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll[1].toFixed(6)},${ll[0].toFixed(6)}`;
+function inRing(pt,r){let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const[xi,yi]=r[i],[xj,yj]=r[j];if(((yi>pt[1])!==(yj>pt[1]))&&(pt[0]<(xj-xi)*(pt[1]-yi)/(yj-yi)+xi))c=!c}return c}
+function inGeom(pt,g){const ps=g.type==="Polygon"?[g.coordinates]:g.coordinates;return ps.some(p=>inRing(pt,p[0])&&!p.slice(1).some(h=>inRing(pt,h)))}
+const distM=(a,b)=>Math.hypot((a[0]-b[0])*84300,(a[1]-b[1])*111000);
+const circ=(ll,m)=>({type:"Feature",geometry:{type:"Polygon",coordinates:[Array.from({length:65},(_,i)=>{const t=i/64*2*Math.PI;return[ll[0]+Math.cos(t)*m/84300,ll[1]+Math.sin(t)*m/111000]})]}});
+const RADS=[[100,"1 block"],[250,"3 blocks"],[400,"5 blocks"]];
+let nearLL=null,nearLabel="",nearR=250;
+// geocoded points often sit on the sidewalk, so fall back to the closest lot corner within 40 m
+async function lotAt(ll){
+ try{LOTS=LOTS||await (await fetch("landuse.json")).json()}catch(e){return null}
+ let f=LOTS.features.find(x=>inGeom(ll,x.geometry));if(f)return f.properties;
+ let best=null,bd=40;LOTS.features.forEach(x=>{(x.geometry.type==="Polygon"?[x.geometry.coordinates]:x.geometry.coordinates).forEach(p=>p[0].forEach(v=>{const d=distM(v,ll);if(d<bd){bd=d;best=x}}))});
+ return best?best.properties:null;
+}
+function closeNear(){closeCard(document.getElementById("card"));if(map.getSource("near"))map.getSource("near").setData({type:"FeatureCollection",features:[]})}
+async function near(ll,label){
+ nearLL=ll;nearLabel=label||"";
+ const el=document.getElementById("card");el.classList.remove("wide");
+ if(map.getSource("near"))map.getSource("near").setData({type:"FeatureCollection",features:[circ(ll,nearR),{type:"Feature",geometry:{type:"Point",coordinates:ll}}]});
+ map.easeTo({center:ll,zoom:nearR>300?15.6:nearR>150?16.2:17,padding:narrow?{top:24,bottom:innerHeight*.55,left:16,right:16}:{top:24,bottom:24,left:400,right:420},duration:calm()?0:700});
+ if(!inGeom(ll,D.boundary)){el.innerHTML=`<button class="x0" aria-label="Close">×</button><p class="k">Near This Address</p><h2>${esc(nearLabel)}</h2><p class="note">This map covers Hell's Kitchen only, about W 34th to W 59th St, from 8th Avenue to the river.</p>`;openCard(el);el.querySelector(".x0").onclick=closeNear;return}
+ const hits=F.filter(f=>!/reno/.test(f.properties.kind)&&distM(f.geometry.coordinates,ll)<=nearR);
+ const by=l=>hits.filter(f=>f.properties.layer===l).sort((a,b)=>String(b.properties.date||"").localeCompare(String(a.properties.date||"")));
+ const vac=by("vacant"),vacP=vac.filter(f=>f.properties.kind==="vacant_coming").length,coming=by("coming"),opened=by("opened");
+ const lot=await lotAt(ll),B=await getBld().catch(()=>({})),has=lot&&B[lot.bbl];
+ const atLot=lot?F.filter(f=>f.properties.bbl===lot.bbl&&!/reno/.test(f.properties.kind)):[];
+ const row=f=>{const p=f.properties;return`<li><button data-id="${p.id}">${esc(p.name||p.address)}<small>${esc(p.label)}${p.name?" · "+esc(p.address):""}${p.date?" · "+fmt(p.date):""}</small></button></li>`};
+ el.innerHTML=`<button class="x0" aria-label="Close">×</button><div class="near">
+  <p class="k">Near This Address</p><h2>${esc(nearLabel)}</h2>
+  <div class="rad" role="group" aria-label="How far">${RADS.map(([m,t])=>`<button data-m="${m}" aria-pressed="${m===nearR}">${t}</button>`).join("")}</div>
+  <div class="cnt"><div><b style="color:#1F7A3A">${opened.length}</b>Just Opened</div><div><b>${coming.length}</b>Coming Soon</div><div><b>${vac.length}</b>Empty Storefronts${vacP?` · ${vacP} with permits`:""}</div><div><b style="color:var(--blue)">${by("build").length+by("zoning").length+by("denied").length}</b>Buildings and Zoning</div></div>
+  ${lot?`<div class="here"><b>${esc(lot.a||"This lot")}</b><br>${esc([LUN[lot.lu],lot.fl&&+lot.fl?Math.round(+lot.fl)+" floors":"",lot.yb&&+lot.yb?"built "+lot.yb:""].filter(Boolean).join(" · "))}${atLot.map(f=>`<br>${esc(f.properties.label+(f.properties.name?": "+f.properties.name:""))}`).join("")}${has?`<p style="margin:8px 0 0"><button class="about" data-bbl="${esc(lot.bbl)}">About This Building</button></p>`:""}</div>`:""}
+  <p><a href="${SV(ll)}" target="_blank" rel="noopener" style="color:var(--blue);font-weight:var(--w2)">Walk around in Street View</a></p>
+  ${coming.length?`<h3>Coming Soon Nearby</h3><ul>${coming.slice(0,6).map(row).join("")}</ul>`:""}
+  ${opened.length?`<h3>Just Opened Nearby</h3><ul>${opened.slice(0,4).map(row).join("")}</ul>`:""}
+  <p class="note" style="color:var(--ink2)">Address search by Mapbox; this map doesn't save it. Renovations are left out.</p></div>`;
+ openCard(el);
+ el.querySelector(".x0").onclick=closeNear;
+ el.querySelectorAll(".rad button").forEach(b=>b.onclick=()=>{nearR=+b.dataset.m;near(nearLL,nearLabel)});
+ el.querySelectorAll("li button[data-id]").forEach(b=>b.onclick=()=>pick(+b.dataset.id));
+ el.querySelectorAll(".about").forEach(b=>b.onclick=()=>openBuilding(b.dataset.bbl,lot.a));
+}
+// search: markers on the map, plus street addresses from Mapbox inside Hell's Kitchen
 (()=>{const q=document.getElementById("q"),res=document.getElementById("qres");
  const norm=s=>String(s||"").toLowerCase().replace(/(\d+)(st|nd|rd|th)\b/g,"$1").replace(/\bw\b/g,"west").replace(/\bave?\b/g,"avenue").replace(/\bst\b/g,"street").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
  const idx=F.map(f=>[norm(f.properties.address+" "+(f.properties.name||"")),f]);
- q.oninput=()=>{const t=norm(q.value);if(t.length<2){res.hidden=true;res.innerHTML="";return}
-  const hits=idx.filter(([k])=>t.split(" ").every(w=>k.includes(w))).slice(0,8);
-  res.innerHTML=hits.length?hits.map(([,f])=>`<li><button data-id="${f.properties.id}">${esc(f.properties.address)}<small>${esc(f.properties.label)}${f.properties.name?" · "+esc(f.properties.name):""}</small></button></li>`).join(""):`<li><button disabled>No matches on the map</button></li>`;
-  res.hidden=false;res.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>{res.hidden=true;pick(+b.dataset.id)})};
- q.onkeydown=e=>{if(e.key==="Enter"){const b=res.querySelector("button[data-id]");if(b)b.click()}if(e.key==="Escape"){res.hidden=true}};
+ const xs=[],ys=[];D.boundary.coordinates.forEach(p=>p[0].forEach(([x,y])=>{xs.push(x);ys.push(y)}));
+ const BB=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)].map(v=>v.toFixed(5)).join(",");
+ let hits=[],addrs=[],tm,seq=0;
+ const draw=()=>{
+  const A=addrs.length?`<li class="hd">Addresses</li>`+addrs.map((a,i)=>`<li><button data-a="${i}">${esc(a.place_name.split(",")[0])}<small>See what's near here</small></button></li>`).join(""):"";
+  const M=hits.length?`<li class="hd">On the map</li>`+hits.map(([,f])=>`<li><button data-id="${f.properties.id}">${esc(f.properties.address)}<small>${esc(f.properties.label)}${f.properties.name?" · "+esc(f.properties.name):""}</small></button></li>`).join(""):"";
+  res.innerHTML=A+M||`<li><button disabled>No matches</button></li>`;res.hidden=false;
+  res.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>{res.hidden=true;pick(+b.dataset.id)});
+  res.querySelectorAll("button[data-a]").forEach(b=>b.onclick=()=>{const a=addrs[+b.dataset.a],nm=a.place_name.split(",")[0];res.hidden=true;q.value=nm;near(a.center,nm)});
+ };
+ q.oninput=()=>{const t=norm(q.value);clearTimeout(tm);addrs=[];if(t.length<2){res.hidden=true;res.innerHTML="";return}
+  hits=idx.filter(([k])=>t.split(" ").every(w=>k.includes(w))).slice(0,6);draw();
+  if(/^\d/.test(q.value.trim())&&t.length>=4){const my=++seq;tm=setTimeout(async()=>{try{
+   const j=await (await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q.value)}.json?types=address&limit=4&country=us&bbox=${BB}&proximity=-73.992,40.762&access_token=${mapboxgl.accessToken}`)).json();
+   if(my===seq){const ORD={first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,ninth:9,tenth:10,eleventh:11,twelfth:12},key=a=>norm(a.place_name.split(",")[0].replace(/\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth)\b/gi,m=>ORD[m.toLowerCase()]));addrs=[];(j.features||[]).forEach(a=>{if(inGeom(a.center,D.boundary)&&!addrs.some(b=>key(b)===key(a)||distM(a.center,b.center)<30))addrs.push(a)});draw()}}catch(e){}},250)}};
+ q.onkeydown=e=>{if(e.key==="Enter"){const b=res.querySelector("button[data-a],button[data-id]");if(b)b.click()}if(e.key==="Escape"){res.hidden=true}};
 })();
 </script>
 </body>
