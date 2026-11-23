@@ -62,13 +62,28 @@ footer summary{cursor:pointer;color:var(--ink);font-weight:var(--w2)}
 #card li .m{color:var(--ink2)}
 #card li .x{margin-top:4px;overflow-wrap:anywhere}
 a{color:var(--blue)}
+/* pink section heads (Judy's call, 22 Nov) */
+.lay .hd{display:inline-block}
+#bld h3,.op h3,.steps h4,.base h2,.lay .hd{color:var(--accent)}
 .x0{float:right;font:inherit;font-size:var(--f1);line-height:1;border:0;background:none;cursor:pointer;color:var(--ink2);padding:6px 10px;border-radius:8px}
 .x0:hover{background:var(--bg)}
 .about{font:inherit;font-weight:var(--w2);color:#fff;background:var(--ink);border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
 dialog#bld{width:min(640px,100vw - 32px);max-height:min(86vh,900px);padding:0;border:0;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);color:var(--ink);background:var(--paper)}
 dialog#bld::backdrop{background:rgba(34,31,26,.45)}
-#bld .x0{position:sticky;top:0;margin:8px}
-#bld .body{padding:20px 24px 24px;overflow:auto;max-height:inherit}
+dialog#bld[open]{display:flex;flex-direction:column}
+#bld .bar{display:flex;justify-content:flex-end;align-items:center;gap:6px;padding:8px 8px 0;flex:none}
+#bld .body{padding:4px 24px 24px;overflow:auto;flex:1;min-height:0}
+/* minimize: dialog hides, a pill keeps it one tap away while the map shows where the building is */
+.mini{font:inherit;font-weight:var(--w2);color:var(--ink);background:var(--bg);border:0;border-radius:8px;padding:8px 12px;cursor:pointer;min-height:36px}
+.mini:hover{background:var(--line)}
+#bldmini{position:fixed;z-index:4;right:16px;bottom:16px;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px);background:var(--paper);border:1.5px solid var(--ink);border-radius:999px;padding:6px 6px 6px 16px;box-shadow:0 6px 20px rgba(40,30,20,.2)}
+#bldmini[hidden]{display:none}
+#bldmini .t{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+#bldmini .t small{color:var(--ink2)}
+#bldmini .t b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bldmini .about{border-radius:999px;white-space:nowrap}
+#bldmini .x0{float:none;padding:4px 10px}
+body.has-mini .mapboxgl-ctrl-bottom-right{bottom:72px}
 #bld h2{font-size:var(--f2);font-weight:var(--w1);margin:0 0 12px}
 #bld h3{font-size:var(--f3);font-weight:var(--w1);margin:20px 0 6px}
 #bld .hint{color:var(--ink2);margin:0 0 8px}
@@ -93,6 +108,9 @@ dialog#bld::backdrop{background:rgba(34,31,26,.45)}
  header{padding:14px 16px 8px} h1{font-size:var(--f2)}
  .lens{margin:0 12px 6px}
  .mapboxgl-ctrl-bottom-right,.mapboxgl-ctrl-bottom-left{bottom:50vh}
+ body.has-mini .mapboxgl-ctrl-bottom-right{bottom:50vh}
+ #bldmini{right:12px;bottom:12px;max-width:calc(100vw - 24px)}
+ body.has-mini #card{padding-bottom:84px}
 }
 .op{margin:12px 0 4px;padding:14px 16px;background:var(--bg);border-radius:6px}
 .op h3{font-size:var(--f3);font-weight:var(--w1);letter-spacing:-.01em;margin:0 0 4px}
@@ -168,6 +186,7 @@ summary{min-height:44px;display:flex;align-items:center;gap:6px;cursor:pointer}
  <header>
   <h1>What's Coming to Hell's Kitchen</h1>
   <p class="asof" id="asof"></p>
+  <p class="asof"><a href="log.html" style="color:var(--blue);font-weight:var(--w2)">Neighborhood Log</a></p>
  </header>
  <div class="lens" role="group" aria-label="Show">
   <button data-v="store" aria-pressed="true">Storefronts</button>
@@ -195,7 +214,8 @@ summary{min-height:44px;display:flex;align-items:center;gap:6px;cursor:pointer}
  </footer>
 </aside>
 <section id="card" class="panel" aria-label="Details"></section>
-<dialog id="bld" aria-labelledby="bld-h"><button class="x0" aria-label="Close" onclick="this.closest('dialog').close()">×</button><div class="body"></div></dialog>
+<dialog id="bld" aria-labelledby="bld-h"><div class="bar"><button class="mini" onclick="miniBld()">Show on Map</button><button class="x0" aria-label="Close" onclick="closeBld()">×</button></div><div class="body"></div></dialog>
+<div id="bldmini" role="region" aria-label="Building details, minimized" hidden><span class="t"><small>About This Building</small><b class="nm"></b></span><button class="about open" onclick="restoreBld()">Open</button><button class="x0" aria-label="Close building details" onclick="closeBld()">×</button></div>
 <script>
 const D=window.HK, F=D.features;
 // colour per sub-type, circles everywhere; denied keeps an X. Palettes validated for colour-blind separation per view.
@@ -294,13 +314,13 @@ function drawLayers(){
  document.getElementById("layers").innerHTML=LAYERS.filter(l=>VIEWS[view].includes(l.id)).map(l=>{
   const shown=Object.keys(l.subs).filter(k=>subOn[l.id+':'+k]).reduce((a,k)=>a+count(l.id,k),0);
   return `<li class="${on[l.id]?"":"off"}">
-  <button class="lay" data-l="${l.id}" aria-pressed="${on[l.id]}"><span class="nm">${l.name}<span class="when">${WHEN[l.id]()}</span></span><span class="n">${shown}</span><span class="sw" aria-hidden="true"></span></button>
+  <button class="lay" data-l="${l.id}" aria-pressed="${on[l.id]}"><span class="nm"><span class="hd">${l.name}</span><span class="when">${WHEN[l.id]()}</span></span><span class="n">${shown}</span><span class="sw" aria-hidden="true"></span></button>
   <ul class="subs">${Object.entries(l.subs).filter(([k])=>count(l.id,k)).map(([k,n])=>`<li><button class="sub" data-s="${l.id}:${k}" aria-pressed="${subOn[l.id+':'+k]}"><img class="sym" src="${URL_[symFor(l.id+':'+k)]}" alt=""><span class="nm">${n}</span><span class="n">${count(l.id,k)}</span><span class="tick" aria-hidden="true"></span></button></li>`).join("")}</ul></li>`}).join("");
  document.querySelectorAll(".lay").forEach(b=>b.onclick=()=>{on[b.dataset.l]=!on[b.dataset.l];redraw(b)});
  document.querySelectorAll(".sub").forEach(b=>b.onclick=()=>{subOn[b.dataset.s]=!subOn[b.dataset.s];const l=b.dataset.s.split(":")[0];if(subOn[b.dataset.s])on[l]=true;redraw(b)});
 }
 document.querySelectorAll(".lens button").forEach(b=>b.onclick=()=>{setView(b.dataset.v);redraw(b)});
-function setIcons(){if(map.getLayer&&map.getLayer("pts")){const e=view==="all"?["concat",["get","sym"],":all"]:["get","sym"];map.setLayoutProperty("pts","icon-image",e);map.setLayoutProperty("sel","icon-image","sel")}}
+function setIcons(){if(map.getLayer&&map.getLayer("pts")){const e=view==="all"?["concat",["get","sym"],":all"]:["get","sym"];map.setLayoutProperty("pts","icon-image",e);if(map.getLayer("selpt"))map.setLayoutProperty("selpt","icon-image",e);map.setLayoutProperty("sel","icon-image","sel")}}
 function redraw(btn){setIcons();const sel=btn&&(btn.dataset.l?`[data-l="${btn.dataset.l}"]`:btn.dataset.s?`[data-s="${btn.dataset.s}"]`:`[data-v="${btn.dataset.v}"]`);drawLayers();filter();if(sel)document.querySelector(sel).focus()}
 
 function bisLink(bbl){if(!bbl||bbl.length<10)return"";return`https://a810-bisweb.nyc.gov/bisweb/PropertyProfileOverviewServlet?boro=${bbl[0]}&block=${+bbl.slice(1,6)}&lot=${+bbl.slice(6,10)}`}
@@ -308,7 +328,7 @@ const SRC={dob:"Buildings Dept. filing",sla:"State Liquor Authority",dohmh:"Heal
 const safeUrl=u=>/^https?:\/\//i.test(u||"")?u:"";
 let lastFocus=null;
 function openCard(el){if(!el.classList.contains("on"))lastFocus=document.activeElement;el.classList.add("on");el.scrollTop=0;const h=el.querySelector("h2");if(h){h.tabIndex=-1;h.focus({preventScroll:true})}}
-function closeCard(el){el.classList.remove("on","wide");if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});if(lastFocus&&document.contains(lastFocus))lastFocus.focus()}
+function closeCard(el){el.classList.remove("on","wide");selF=null;if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});if(lastFocus&&document.contains(lastFocus))lastFocus.focus()}
 function card(f){
  const p=f.properties, el=document.getElementById("card"); el.classList.remove("wide");
  const links=[];
@@ -412,15 +432,59 @@ let BLD=null;
 const STAT_MEAN={"Filed":"The application was accepted; plan review isn't finished.","Reported complete":"The work was reported complete; the city's final sign-off is a separate step.","Finished":"The city signed off on the finished work.","Permit issued":"Work is allowed to go ahead.","Plans approved":"Plans were approved; work can start once a permit is issued.","Changes requested":"A city plan reviewer asked for changes before approving.","Under review":"Waiting for, or with, a city reviewer.","On hold":"Paused, often over paperwork or fees.","Withdrawn":"The applicant cancelled this filing.","Denied":"The city turned this filing down."};
 const money=n=>"$"+Number(n).toLocaleString("en-US");
 const yr=d=>(d||"").slice(0,4);
+let bldNow=null, lastLL=null, selF=null;
+function bldSpot(bbl){
+ // where the open building is: the selected marker, any marker on that lot, or the last spot clicked
+ if(selF&&selF.properties.bbl===bbl)return selF.geometry.coordinates;
+ const f=F.find(x=>x.properties.bbl===bbl);
+ if(f){map.getSource("sel").setData(f);selF=f;return f.geometry.coordinates}
+ return lastLL;
+}
+const calm=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+// transform that lands box a on box b
+const toBox=(a,b)=>`translate(${b.left+b.width/2-(a.left+a.width/2)}px,${b.top+b.height/2-(a.top+a.height/2)}px) scale(${b.width/a.width},${b.height/a.height})`;
+let busy=false;
+async function miniBld(){
+ if(busy)return; busy=true;
+ const d=document.getElementById("bld"), m=document.getElementById("bldmini");
+ m.querySelector(".nm").textContent=(document.getElementById("bld-h")||{}).textContent||"";
+ m.style.visibility="hidden"; m.hidden=false; document.body.classList.add("has-mini");
+ const ll=bldNow&&bldSpot(bldNow);
+ if(ll)map.easeTo({center:ll,zoom:Math.max(map.getZoom(),16.5),padding:narrow?{top:24,bottom:innerHeight*.62,left:16,right:16}:{top:24,bottom:24,left:400,right:420},duration:calm()?0:700});
+ if(!calm()){
+  const a=d.getBoundingClientRect(), b=m.getBoundingClientRect(), o={duration:340,easing:"cubic-bezier(.5,0,.75,0)",fill:"forwards"};
+  try{d.animate([{opacity:1},{opacity:0}],{...o,pseudoElement:"::backdrop"})}catch(e){}
+  await d.animate([{transform:"none",opacity:1,borderRadius:"12px"},{transform:toBox(a,b),opacity:.35,borderRadius:"24px"}],o).finished;
+ }
+ d.close(); d.getAnimations({subtree:true}).forEach(x=>x.cancel());
+ m.style.visibility=""; m.querySelector(".open").focus();
+ if(!calm())m.animate([{transform:"scale(.92)"},{transform:"none"}],{duration:160,easing:"ease-out"});
+ busy=false;
+}
+async function restoreBld(){
+ if(busy)return; busy=true;
+ const d=document.getElementById("bld"), m=document.getElementById("bldmini"), b=m.getBoundingClientRect();
+ m.hidden=true; document.body.classList.remove("has-mini"); d.showModal();
+ if(!calm()){
+  const a=d.getBoundingClientRect(), o={duration:300,easing:"cubic-bezier(.25,1,.5,1)"};
+  try{d.animate([{opacity:0},{opacity:1}],{...o,pseudoElement:"::backdrop"})}catch(e){}
+  await d.animate([{transform:toBox(a,b),opacity:.35,borderRadius:"24px"},{transform:"none",opacity:1,borderRadius:"12px"}],o).finished;
+ }
+ busy=false;
+}
+function hideMini(){document.getElementById("bldmini").hidden=true;document.body.classList.remove("has-mini");bldNow=null}
+function closeBld(){document.getElementById("bld").close();hideMini()}
+document.getElementById("bld").addEventListener("cancel",hideMini);
 async function openBuilding(bbl,fallback){
  const dlg=document.getElementById("bld"), body=dlg.querySelector(".body");
+ bldNow=bbl; document.getElementById("bldmini").hidden=true; document.body.classList.remove("has-mini");
  body.innerHTML="<p>Loading...</p>"; dlg.showModal();
  await getBld();if(!Object.keys(BLD).length){body.innerHTML="<p>Couldn't load this building's record.</p>";return}
  const b=BLD[bbl]; if(!b){body.innerHTML="<p>No city record found for this building.</p>";return}
  const facts=[["Used for",b.use],["Built",b.built],["Floors",b.floors],["Homes",b.homes&&+b.homes?b.homes:null],["Shop space",b.retail?Number(b.retail).toLocaleString("en-US")+" sq ft":null],["Zoning",b.zoning],["Owner on record",b.owner]].filter(f=>f[1]);
  const statuses=[...new Set(b.work.map(w=>w.s))];
  body.innerHTML=`
-  <h2 id="bld-h">${esc(b.addr||fallback)}</h2>
+  <h2 id="bld-h">${esc(fallback||b.addr)}</h2>${fallback&&b.addr&&fallback.toLowerCase()!==b.addr.toLowerCase()?`<p class="hint">City tax lot address: ${esc(b.addr)}</p>`:""}
   <section><h3>At a Glance</h3><dl class="facts">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></section>
   ${b.store.length?`<section><h3>Storefront Over the Years</h3><p class="hint">What the owner told the city was in the ground-floor space each December.</p>
    <ul class="rows">${b.store.map(s=>`<li><b>${s.y}</b><span>${s.vacant?`${s.vacant>1?s.vacant+" storefronts ":""}Vacant`:""}${s.vacant&&s.used.length?" · ":""}${esc(s.used.join(", "))}${s.lease?` · lease ends ${fmt(s.lease)}`:""}</span></li>`).join("")}</ul></section>`:""}
@@ -469,7 +533,7 @@ function pick(id){
  const f=F.find(x=>x.properties.id===id);if(!f)return;const p=f.properties;
  // a card never points at a hidden marker
  if(!on[p.layer]||!subOn[p.sym]){if(!VIEWS[view].includes(p.layer))setView(VIEWS.store.includes(p.layer)?"store":"built");on[p.layer]=true;subOn[p.sym]=true;drawLayers();filter()}
- map.getSource("sel").setData(f);card(f);
+ map.getSource("sel").setData(f);selF=f;card(f);
  // keep the marker clear of the panels
  const pad=narrow?{top:16,bottom:innerHeight*.62+16,left:16,right:16}:{top:24,bottom:24,left:400,right:420};
  const pt=map.project(f.geometry.coordinates), w=map.getContainer().clientWidth, h=map.getContainer().clientHeight;
@@ -562,6 +626,7 @@ map.on("load",()=>{
  // business names appear once you zoom to street level
  map.addLayer({id:"names",type:"symbol",source:"pts",minzoom:16,layout:{"text-field":["get","name"],"text-size":12,"text-font":["DIN Pro Medium","Arial Unicode MS Regular"],"text-anchor":"left","text-offset":["get","toff"],"text-max-width":10,"text-optional":true,"symbol-sort-key":["-",100,["get","z"]]},paint:{"text-color":"#201E1A","text-halo-color":"#F5F2E8","text-halo-width":2}});
  map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"selpt",type:"symbol",source:"sel",layout:{"icon-image":["get","sym"],"icon-size":symSize,"icon-offset":["get","off"],"icon-allow-overlap":true,"icon-ignore-placement":true}});
  map.addLayer({id:"sel",type:"symbol",source:"sel",layout:{"icon-image":"sel","icon-size":symSize,"icon-offset":["get","off"],"icon-allow-overlap":true,"icon-ignore-placement":true}});
  filter();
  // Just Opened: business name, address, date it opened or finished; other layers: address + label
@@ -570,7 +635,11 @@ map.on("load",()=>{
  map.on("mousemove","pts",e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties;pop.setLngLat(e.lngLat).setHTML(tip(p)).addTo(map)});
  map.on("mouseleave","pts",()=>{map.getCanvas().style.cursor="";pop.remove()});
  map.on("click","pts",e=>pick(e.features[0].properties.id));
- map.once("idle",()=>{window.__ready=true;const m=location.hash.match(/^#pick=(\d+)(?:&type=(\w+))?$/);if(m){pick(+m[1]);if(m[2])stepView(F.find(x=>x.properties.id===+m[1]),m[2])}});
+ map.on("click",e=>{lastLL=[e.lngLat.lng,e.lngLat.lat]});
+ map.once("idle",()=>{window.__ready=true;
+  const b=location.hash.match(/^#bld=(\d{10})(?:&rec=([\w:.-]+))?$/);
+  if(b){const f=(b[2]&&F.find(x=>x.properties.items.some(i=>i.src+"-"+i.id===b[2])))||F.find(x=>x.properties.bbl===b[1]);
+   if(f)pick(f.properties.id); openBuilding(b[1],f?f.properties.address:"")}const m=location.hash.match(/^#pick=(\d+)(?:&type=(\w+))?$/);if(m){pick(+m[1]);if(m[2])stepView(F.find(x=>x.properties.id===+m[1]),m[2])}});
 });
 drawLayers();
 // address search: matches every marker, opens its card
@@ -583,7 +652,6 @@ drawLayers();
   res.hidden=false;res.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>{res.hidden=true;pick(+b.dataset.id)})};
  q.onkeydown=e=>{if(e.key==="Enter"){const b=res.querySelector("button[data-id]");if(b)b.click()}if(e.key==="Escape"){res.hidden=true}};
 })();
-const h=location.hash.match(/^#bld=(\d{10})$/); if(h)openBuilding(h[1],"");
 </script>
 </body>
 </html>

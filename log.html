@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hell's Kitchen Log</title>
+<link rel="alternate" type="application/rss+xml" title="Hell's Kitchen Log" href="feed.xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+/* same brand + type tokens as index.html */
+:root{--f1:20px;--f2:16px;--f3:14px;--f4:12px;--w1:800;--w2:600;--ink:#201E1A;--ink2:#5E594F;--line:#DCD7C8;--paper:#F5F2E8;--bg:#E9E5D8;--focus:#2B5FC9;--accent:#FF3E96;--blue:#2B5FC9}
+*{box-sizing:border-box}
+html,body{margin:0;font:var(--f4)/1.45 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+main{max-width:720px;margin:0 auto;padding:24px 16px 64px;overflow-x:hidden}
+.kick{font-weight:var(--w2);margin:0 0 6px;font-size:var(--f3)}
+.kick,h2 .hl{color:var(--accent)}
+h1{font-size:var(--f1);line-height:1.05;font-weight:var(--w1);letter-spacing:-.02em;margin:0 0 6px}
+.asof{color:var(--ink2);margin:0}
+.top{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 0}
+.top a{color:var(--blue);font-weight:var(--w2)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:18px 0}
+.sum div{background:var(--paper);border-radius:12px;padding:10px 12px}
+.sum b{display:block;font-size:var(--f1);font-weight:var(--w1);font-variant-numeric:tabular-nums}
+.sum span{color:var(--ink2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.chips button{font:inherit;font-weight:var(--w2);border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);padding:8px 12px;border-radius:999px;cursor:pointer;min-height:36px;display:flex;align-items:center;gap:6px}
+.chips button[aria-pressed=false]{border-color:var(--line);color:var(--ink2);background:none}
+.chips i,.tag i{width:10px;height:10px;border-radius:50%;border:1px solid var(--ink);display:inline-block;flex:none}
+h2{font-size:var(--f3);font-weight:var(--w1);margin:22px 0 8px;padding-top:10px;border-top:2px solid var(--ink)}
+h2 span{color:var(--ink2);font-weight:var(--w2)}
+h2 span.hl{color:var(--accent);font-weight:var(--w1)}
+ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+li{background:var(--paper);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:10px;overflow-wrap:anywhere}
+li:target{box-shadow:0 0 0 3px var(--accent)}
+.dt{color:var(--ink2);font-variant-numeric:tabular-nums;font-weight:var(--w2)}
+.tag{display:flex;align-items:center;gap:6px;color:var(--ink2);font-weight:var(--w2);margin-bottom:2px}
+.what{font-size:var(--f2);font-weight:var(--w1);line-height:1.2;margin:0}
+.nm{font-weight:var(--w1)}
+.st{margin:4px 0 0}
+.st .chg{background:var(--accent);padding:0 4px;border-radius:4px}
+.dx{color:var(--ink2);margin:4px 0 0}
+.lk{margin:6px 0 0;display:flex;gap:12px;flex-wrap:wrap}
+.lk a{color:var(--blue);font-weight:var(--w2)}
+.more{font:inherit;font-weight:var(--w2);margin:16px auto 0;display:block;border:1.5px solid var(--ink);background:var(--paper);padding:10px 16px;border-radius:999px;cursor:pointer}
+.empty{color:var(--ink2)}
+footer{color:var(--ink2);margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<main>
+ <p class="kick">What's the Sitchy in Hell's Kitchy?</p>
+ <h1>Hell's Kitchen Log</h1>
+ <p class="asof" id="asof"></p>
+ <p class="top"><a href="index.html">Map</a><a href="feed.xml">RSS Feed</a></p>
+ <div class="sum" id="sum"></div>
+ <div class="chips" id="chips" role="group" aria-label="Show"></div>
+ <div id="list"></div>
+ <button class="more" id="more" hidden>Show Older</button>
+ <footer>From NYC and New York State open data: Buildings Dept. permits, State Liquor Authority applications, Health Dept. restaurant inspections, City Planning zoning applications. Entries from before this log started are dated by their filing or first inspection date.</footer>
+</main>
+<script>
+const CATS={store:["New Shops","#FF3E96",true],food:["Restaurants","#F2A000",true],liquor:["Liquor Licenses","#6E3FA3",true],build:["Buildings","#2B5FC9",true],zoning:["Zoning","#00A0B0",true],reno:["Renovations","#8a8278",false]};
+const on=Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v[2]]));
+let EV=[],shown=12;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=(d,o)=>new Date(d+"T12:00:00").toLocaleDateString("en-US",o);
+const monday=d=>{const t=new Date(d+"T12:00:00");t.setDate(t.getDate()-((t.getDay()+6)%7));return t.toISOString().slice(0,10)};
+function chips(){
+ document.getElementById("chips").innerHTML=Object.entries(CATS).map(([k,v])=>`<button data-k="${k}" aria-pressed="${on[k]}"><i style="background:${v[1]}"></i>${v[0]}</button>`).join("");
+ document.querySelectorAll("#chips button").forEach(b=>b.onclick=()=>{on[b.dataset.k]=!on[b.dataset.k];b.setAttribute("aria-pressed",on[b.dataset.k]);render()});
+}
+function item(e){
+ const c=CATS[e.cat]||["Other","#ccc"];
+ const st=e.from?`<span class="chg">${esc(e.from)} → ${esc(e.status)}</span>`:esc(e.status);
+ const links=[e.bbl?`<a href="index.html#bld=${esc(e.bbl)}&rec=${esc(e.src+"-"+e.id)}">About This Building</a>`:"",e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">Open the City Record</a>`:""].join("");
+ return `<li id="${esc(e.src+"-"+e.id)}"><span class="dt">${fmt(e.date,{month:"short",day:"numeric"})}</span><div>
+  <div class="tag"><i style="background:${c[1]}"></i>${c[0]}</div>
+  <p class="what">${esc(e.what)}</p>
+  <p>${e.name?`<span class="nm">${esc(e.name)}</span>, `:""}${esc(e.where)}</p>
+  <p class="st">${st}</p>${e.detail?`<p class="dx">${esc(e.detail)}</p>`:""}${links?`<p class="lk">${links}</p>`:""}</div></li>`;
+}
+function render(){
+ const ev=EV.filter(e=>on[e.cat]);
+ const weeks=[...new Set(ev.map(e=>monday(e.date)))];
+ const html=weeks.slice(0,shown).map(w=>{const es=ev.filter(e=>monday(e.date)===w);
+  return `<h2><span class="hl">Week of ${fmt(w,{month:"long",day:"numeric",year:"numeric"})}</span> <span>· ${es.length}</span></h2><ol>${es.map(item).join("")}</ol>`}).join("");
+ document.getElementById("list").innerHTML=html||`<p class="empty">Nothing here with these filters.</p>`;
+ document.getElementById("more").hidden=weeks.length<=shown;
+}
+document.getElementById("more").onclick=()=>{shown+=12;render()};
+fetch("log.json").then(r=>r.json()).then(d=>{
+ EV=d.events;
+ document.getElementById("asof").textContent="Updated "+fmt(d.asof,{month:"long",day:"numeric",year:"numeric"});
+ const since=new Date(d.asof+"T12:00:00");since.setDate(since.getDate()-30);const s=since.toISOString().slice(0,10);
+ const n=c=>EV.filter(e=>e.cat===c&&e.date>=s&&(c!=="food"||e.what==="Restaurant opened")).length;
+ document.getElementById("sum").innerHTML=[["store","new shop permits"],["food","restaurants opened"],["liquor","liquor applications"]].map(([c,l])=>`<div><b>${n(c)}</b><span>${l}, past 30 days</span></div>`).join("");
+ chips();render();
+ if(location.hash){const t=document.getElementById(location.hash.slice(1));if(!t){shown=99;render()}document.getElementById(location.hash.slice(1))?.scrollIntoView({block:"center"})}
+}).catch(()=>{document.getElementById("list").innerHTML=`<p class="empty">Couldn't load the log.</p>`});
+</script>
+</body>
+</html>
