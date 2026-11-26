@@ -226,7 +226,7 @@ summary{min-height:44px;display:flex;align-items:center;gap:6px;cursor:pointer}
  </section>
  <footer>
   <details><summary>Sources and Limits</summary>
-   <p>City and state open data, clipped to the city's Hell's Kitchen neighborhood boundary (NTA MN0402). Buildings Dept. permit filings since July 2024; new buildings and demolitions since 2021 (both the DOB NOW and older BIS systems); State Liquor Authority pending applications; health inspection records; City Planning zoning applications; Board of Standards and Appeals cases; storefront registry (31 Dec 2025). Background: City Planning's zoning districts, commercial overlays, special districts and tax lot land use (MapPLUTO).</p>
+   <p>City and state open data, clipped to the city's Hell's Kitchen neighborhood boundary (NTA MN0402) plus the lots facing it across each edge street. Buildings Dept. permit filings since July 2024; new buildings and demolitions since 2021 (both the DOB NOW and older BIS systems); State Liquor Authority pending applications and licenses issued in the past 120 days; electrical permits (past 12 months); new NY State business registrations at storefront addresses with shop-like names (past 12 months); health inspection records; City Planning zoning applications; Board of Standards and Appeals cases; storefront registry (31 Dec 2025). Background: City Planning's zoning districts, commercial overlays, special districts and tax lot land use (MapPLUTO).</p>
    <p>"Likely new tenant" is read from the permit's own description and can be wrong. Denial reasons are summarized from each Board decision letter. Liquor license and Buildings Dept. objection reasons are not public.</p>
   </details>
  </footer>
@@ -239,7 +239,7 @@ const D=window.HK, F=D.features;
 // colour per sub-type, circles everywhere; denied keeps an X. Palettes validated for colour-blind separation per view.
 // All view falls back to one colour per layer so ~14 types never share a screen.
 const LAYERS=[
- {id:"coming",name:"Coming Soon",hex:"#FF3E96",subs:{new:"Likely New Tenant",sign:"Sign Permit",liquor:"Liquor License",food_new:"Restaurant Not Yet Inspected",spotted:"Spotted on the Street",reno:"Renovation"}},
+ {id:"coming",name:"Coming Soon",hex:"#FF3E96",subs:{new:"Likely New Tenant",sign:"Sign Permit",liquor:"Liquor License",liquor_new:"Liquor License Issued",food_new:"Restaurant Not Yet Inspected",corp:"Business Registered Here",spotted:"Spotted on the Street",reno:"Renovation"}},
  {id:"opened",name:"Just Opened",hex:"#1F7A3A",subs:{food_open:"Restaurant Opened",done_new:"Build-Out Finished",done_sign:"Sign Installed",done_reno:"Renovation Finished",spotted:"Spotted on the Street"}},
  {id:"vacant",name:"Vacant Storefronts",hex:"#8C877D",subs:{vacant_coming:"Permit Filed",vacant:"No Permit"}},
  {id:"build",name:"New Buildings and Demolitions",hex:"#2B5FC9",subs:{nb:"New Building",demo:"Demolition"}},
@@ -259,6 +259,8 @@ const SYM={
  "opened:done_sign":{shape:"circle",fill:"#1F7A3A",size:15,z:54},
  "opened:done_reno":{shape:"circle",fill:"#9DBFA6",size:12,z:11},
  "coming:reno":{shape:"circle",fill:"#B9B3A6",size:12,z:10},
+ "coming:liquor_new":{shape:"circle",fill:"#6E3FA3",ring:"#201E1A",size:19,z:62},
+ "coming:corp":{shape:"circle",fill:"#FF3E96",size:13,z:40},
  "coming:spotted":{shape:"circle",fill:"#FF3E96",ring:"#201E1A",size:19,z:61},
  "opened:spotted":{shape:"circle",fill:"#1F7A3A",ring:"#FF3E96",size:19,z:57},
  "vacant:vacant_coming":{shape:"circle",fill:"#8C877D",ring:"#FF3E96",size:17,z:30},
@@ -715,7 +717,7 @@ async function near(ll,label){
  const el=document.getElementById("card");el.classList.remove("wide");
  if(map.getSource("near"))map.getSource("near").setData({type:"FeatureCollection",features:[circ(ll,nearR),{type:"Feature",geometry:{type:"Point",coordinates:ll}}]});
  map.easeTo({center:ll,zoom:nearR>300?15.6:nearR>150?16.2:17,padding:narrow?{top:24,bottom:innerHeight*.55,left:16,right:16}:{top:24,bottom:24,left:400,right:420},duration:calm()?0:700});
- if(!inGeom(ll,D.boundary)){el.innerHTML=`<button class="x0" aria-label="Close">×</button><p class="k">Near This Address</p><h2>${esc(nearLabel)}</h2><p class="note">This map covers Hell's Kitchen only, about W 34th to W 59th St, from 8th Avenue to the river.</p>`;openCard(el);el.querySelector(".x0").onclick=closeNear;return}
+ if(!inGeom(ll,D.boundary)){el.innerHTML=`<button class="x0" aria-label="Close">×</button><p class="k">Near This Address</p><h2>${esc(nearLabel)}</h2><p class="note">This map covers Hell's Kitchen only, about W 34th to W 59th St, from 8th Avenue to the river, both sides of the edge streets.</p>`;openCard(el);el.querySelector(".x0").onclick=closeNear;return}
  const hits=F.filter(f=>!/reno/.test(f.properties.kind)&&distM(f.geometry.coordinates,ll)<=nearR);
  const by=l=>hits.filter(f=>f.properties.layer===l).sort((a,b)=>String(b.properties.date||"").localeCompare(String(a.properties.date||"")));
  const vac=by("vacant"),vacP=vac.filter(f=>f.properties.kind==="vacant_coming").length,coming=by("coming"),opened=by("opened");

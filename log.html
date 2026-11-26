@@ -61,7 +61,7 @@ footer{color:var(--ink2);margin-top:28px;border-top:1px solid var(--line);paddin
  <footer>From NYC and New York State open data: Buildings Dept. permits, State Liquor Authority applications, Health Dept. restaurant inspections, City Planning zoning applications. Entries from before this log started are dated by their filing or first inspection date.</footer>
 </main>
 <script>
-const CATS={store:["New Shops","#FF3E96",true],food:["Restaurants","#F2A000",true],liquor:["Liquor Licenses","#6E3FA3",true],build:["Buildings","#2B5FC9",true],zoning:["Zoning","#00A0B0",true],spotted:["Spotted","#201E1A",true],reno:["Renovations","#8a8278",false]};
+const CATS={store:["New Shops","#FF3E96",true],food:["Restaurants","#F2A000",true],liquor:["Liquor Licenses","#6E3FA3",true],build:["Buildings","#2B5FC9",true],zoning:["Zoning","#00A0B0",true],corp:["Registered Businesses","#E07B00",true],spotted:["Spotted","#201E1A",true],reno:["Renovations","#8a8278",false]};
 const on=Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v[2]]));
 let EV=[],shown=12;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
