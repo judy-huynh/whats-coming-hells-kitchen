@@ -239,8 +239,8 @@ const D=window.HK, F=D.features;
 // colour per sub-type, circles everywhere; denied keeps an X. Palettes validated for colour-blind separation per view.
 // All view falls back to one colour per layer so ~14 types never share a screen.
 const LAYERS=[
- {id:"coming",name:"Coming Soon",hex:"#FF3E96",subs:{new:"Likely New Tenant",sign:"Sign Permit",liquor:"Liquor License",food_new:"Restaurant Not Yet Inspected",reno:"Renovation"}},
- {id:"opened",name:"Just Opened",hex:"#1F7A3A",subs:{food_open:"Restaurant Opened",done_new:"Build-Out Finished",done_sign:"Sign Installed",done_reno:"Renovation Finished"}},
+ {id:"coming",name:"Coming Soon",hex:"#FF3E96",subs:{new:"Likely New Tenant",sign:"Sign Permit",liquor:"Liquor License",food_new:"Restaurant Not Yet Inspected",spotted:"Spotted on the Street",reno:"Renovation"}},
+ {id:"opened",name:"Just Opened",hex:"#1F7A3A",subs:{food_open:"Restaurant Opened",done_new:"Build-Out Finished",done_sign:"Sign Installed",done_reno:"Renovation Finished",spotted:"Spotted on the Street"}},
  {id:"vacant",name:"Vacant Storefronts",hex:"#8C877D",subs:{vacant_coming:"Permit Filed",vacant:"No Permit"}},
  {id:"build",name:"New Buildings and Demolitions",hex:"#2B5FC9",subs:{nb:"New Building",demo:"Demolition"}},
  {id:"zoning",name:"Zoning Proposals",hex:"#00A0B0",subs:{active:"In Progress",done:"Approved Since 2019"}},
@@ -259,6 +259,8 @@ const SYM={
  "opened:done_sign":{shape:"circle",fill:"#1F7A3A",size:15,z:54},
  "opened:done_reno":{shape:"circle",fill:"#9DBFA6",size:12,z:11},
  "coming:reno":{shape:"circle",fill:"#B9B3A6",size:12,z:10},
+ "coming:spotted":{shape:"circle",fill:"#FF3E96",ring:"#201E1A",size:19,z:61},
+ "opened:spotted":{shape:"circle",fill:"#1F7A3A",ring:"#FF3E96",size:19,z:57},
  "vacant:vacant_coming":{shape:"circle",fill:"#8C877D",ring:"#FF3E96",size:17,z:30},
  "vacant:vacant":{shape:"circle",fill:"#8C877D",size:13,z:20},
  "build:nb":{shape:"circle",fill:"#2B5FC9",size:21,z:70},
@@ -350,7 +352,7 @@ function closeCard(el){el.classList.remove("on","wide");selF=null;if(map.getSour
 function card(f){
  const p=f.properties, el=document.getElementById("card"); el.classList.remove("wide");
  const links=[];
- if(safeUrl(p.url))links.push(`<a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener">${p.layer==="denied"&&p.kind==="bsa"?"Read the decision letter":"Open the city record"}</a>`);
+ if(safeUrl(p.url))links.push(`<a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener">${p.layer==="denied"&&p.kind==="bsa"?"Read the decision letter":p.kind==="spotted"?"Read about it":"Open the city record"}</a>`);
  if(p.bbl)links.push(`<button class="about" data-bbl="${esc(p.bbl)}">About This Building</button>`);
  el.innerHTML=`<button class="x0" aria-label="Close">×</button>
   <p class="k"><img src="${URL_[p.sym]}" alt="">${esc(p.label)}</p>
@@ -679,7 +681,7 @@ map.on("load",()=>{
  map.addLayer({id:"near-pt",type:"circle",source:"near",filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":8,"circle-color":"#201E1A","circle-stroke-color":"#FFFFFF","circle-stroke-width":3}});
  filter();
  // Just Opened: business name, address, date it opened or finished; other layers: address + label
- const tip=p=>p.layer==="opened"?`<b>${esc(p.name||p.label)}</b><br>${esc(p.address)}<br><span class="tipd">${p.kind==="food_open"?"First inspected":"Finished"} ${fmt(p.date)}</span>`:`<b>${esc(p.address)}</b><br>${esc(p.label)}`;
+ const tip=p=>p.layer==="opened"?`<b>${esc(p.name||p.label)}</b><br>${esc(p.address)}<br><span class="tipd">${p.kind==="food_open"?"First inspected":p.kind==="spotted"?"Spotted":"Finished"} ${fmt(p.date)}</span>`:`<b>${esc(p.address)}</b><br>${esc(p.label)}`;
  const pop=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12});
  map.on("mousemove","pts",e=>{map.getCanvas().style.cursor="pointer";const p=e.features[0].properties;pop.setLngLat(e.lngLat).setHTML(tip(p)).addTo(map)});
  map.on("mouseleave","pts",()=>{map.getCanvas().style.cursor="";pop.remove()});

@@ -61,7 +61,7 @@ footer{color:var(--ink2);margin-top:28px;border-top:1px solid var(--line);paddin
  <footer>From NYC and New York State open data: Buildings Dept. permits, State Liquor Authority applications, Health Dept. restaurant inspections, City Planning zoning applications. Entries from before this log started are dated by their filing or first inspection date.</footer>
 </main>
 <script>
-const CATS={store:["New Shops","#FF3E96",true],food:["Restaurants","#F2A000",true],liquor:["Liquor Licenses","#6E3FA3",true],build:["Buildings","#2B5FC9",true],zoning:["Zoning","#00A0B0",true],reno:["Renovations","#8a8278",false]};
+const CATS={store:["New Shops","#FF3E96",true],food:["Restaurants","#F2A000",true],liquor:["Liquor Licenses","#6E3FA3",true],build:["Buildings","#2B5FC9",true],zoning:["Zoning","#00A0B0",true],spotted:["Spotted","#201E1A",true],reno:["Renovations","#8a8278",false]};
 const on=Object.fromEntries(Object.entries(CATS).map(([k,v])=>[k,v[2]]));
 let EV=[],shown=12;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -74,7 +74,7 @@ function chips(){
 function item(e){
  const c=CATS[e.cat]||["Other","#ccc"];
  const st=e.from?`<span class="chg">${esc(e.from)} → ${esc(e.status)}</span>`:esc(e.status);
- const links=[e.bbl?`<a href="index.html#bld=${esc(e.bbl)}&rec=${esc(e.src+"-"+e.id)}">About This Building</a>`:"",e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">Open the City Record</a>`:""].join("");
+ const links=[e.bbl?`<a href="index.html#bld=${esc(e.bbl)}&rec=${esc(e.src+"-"+e.id)}">About This Building</a>`:"",e.src==="spotted"&&e.ll?`<a href="index.html#near=${esc(e.ll.join(","))}&a=${encodeURIComponent(e.where||"")}">See on Map</a>`:"",e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${e.src==="spotted"?"Read About It":"Open the City Record"}</a>`:""].join("");
  return `<li id="${esc(e.src+"-"+e.id)}"><span class="dt">${fmt(e.date,{month:"short",day:"numeric"})}</span><div>
   <div class="tag"><i style="background:${c[1]}"></i>${c[0]}</div>
   <p class="what">${esc(e.what)}</p>
