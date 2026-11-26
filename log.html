@@ -40,6 +40,7 @@ li:target{box-shadow:0 0 0 3px var(--accent)}
 .nm{font-weight:var(--w1)}
 .st{margin:4px 0 0}
 .st .chg{background:var(--accent);padding:0 4px;border-radius:4px}
+.st .est{color:var(--ink2)}
 .dx{color:var(--ink2);margin:4px 0 0}
 .lk{margin:6px 0 0;display:flex;gap:12px;flex-wrap:wrap}
 .lk a{color:var(--blue);font-weight:var(--w2)}
@@ -79,7 +80,7 @@ function item(e){
   <div class="tag"><i style="background:${c[1]}"></i>${c[0]}</div>
   <p class="what">${esc(e.what)}</p>
   <p>${e.name?`<span class="nm">${esc(e.name)}</span>, `:""}${esc(e.where)}</p>
-  <p class="st">${st}</p>${e.detail?`<p class="dx">${esc(e.detail)}</p>`:""}${links?`<p class="lk">${links}</p>`:""}</div></li>`;
+  <p class="st">${st}${e.est?` <span class="est">(city publishes no date; first seen by this log)</span>`:""}</p>${e.detail?`<p class="dx">${esc(e.detail)}</p>`:""}${links?`<p class="lk">${links}</p>`:""}</div></li>`;
 }
 function render(){
  const ev=EV.filter(e=>on[e.cat]);
